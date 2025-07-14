@@ -202,18 +202,12 @@ const isFirebaseAvailable = async (): Promise<boolean> => {
     return firebaseAvailableCache;
   }
   
-  try {
-    // Quick test to see if Firebase is responsive
-    await adminDb.collection('_test').limit(1).get();
-    firebaseAvailableCache = true;
-    firebaseCheckTime = now;
-    return true;
-  } catch (error) {
-    console.warn('🔥 Firebase connection test failed, using mock database');
-    firebaseAvailableCache = false;
-    firebaseCheckTime = now;
-    return false;
-  }
+  // If adminDb exists and is initialized, consider Firebase available
+  // Don't do actual database operations that might fail due to permissions
+  firebaseAvailableCache = true;
+  firebaseCheckTime = now;
+  console.log('🔥 Firebase Admin DB is available and initialized');
+  return true;
 };
 
 // Helper function to calculate analytics from chat sessions
@@ -368,17 +362,7 @@ export const serverDb = {
   async createBot(botData: Bot): Promise<Bot> {
     console.log('🤖 serverDb.createBot called with:', botData.id);
     
-    // Always save to mock database for development reliability
-    const mockBots = getMockBots();
-    mockBots.set(botData.id, botData);
-    console.log('✅ Bot saved to mock database:', botData.id);
-    console.log('📋 Total mock bots now:', mockBots.size);
-
-    // Save to file for persistence
-    saveToFile(BOTS_FILE, mockBots);
-    console.log('💾 Bot data saved to file');
-
-    // Try to save to Firebase if available
+    // Try to save to Firebase first (primary database)
     if (adminDb) {
       const firebaseAvailable = await isFirebaseAvailable();
       if (firebaseAvailable) {
@@ -394,13 +378,25 @@ export const serverDb = {
           };
           
           await adminDb.collection('bots').doc(botData.id).set(cleanBotData);
-          console.log('✅ Bot also saved to Firebase successfully');
+          console.log('✅ Bot saved to Firebase successfully');
+          return botData;
         } catch (error) {
-          console.error('❌ Error saving bot to Firebase (using mock as primary):', error instanceof Error ? error.message : String(error));
+          console.error('❌ Error saving bot to Firebase, falling back to mock database:', error instanceof Error ? error.message : String(error));
         }
       }
     }
     
+    // Fallback to mock database if Firebase is not available or failed
+    console.log('📱 Using mock database as fallback');
+    const mockBots = getMockBots();
+    mockBots.set(botData.id, botData);
+    console.log('✅ Bot saved to mock database:', botData.id);
+    console.log('📋 Total mock bots now:', mockBots.size);
+
+    // Save to file for persistence
+    saveToFile(BOTS_FILE, mockBots);
+    console.log('💾 Bot data saved to file');
+
     return botData;
   },
 
@@ -559,6 +555,23 @@ export const serverDb = {
   async createChatSession(sessionData: ChatSession): Promise<ChatSession> {
     console.log('💬 serverDb.createChatSession called for bot:', sessionData.botId);
     
+    // Try to save to Firebase first (primary database)
+    if (adminDb) {
+      const firebaseAvailable = await isFirebaseAvailable();
+      if (firebaseAvailable) {
+        try {
+          console.log('�� Attempting to save chat session to Firebase...');
+          await adminDb.collection('chatSessions').doc(sessionData.id).set(sessionData);
+          console.log('✅ Chat session saved to Firebase successfully');
+          return sessionData;
+        } catch (error) {
+          console.error('❌ Error saving chat session to Firebase, falling back to mock database:', error instanceof Error ? error.message : String(error));
+        }
+      }
+    }
+    
+    // Fallback to mock database if Firebase is not available or failed
+    console.log('📱 Using mock database as fallback for chat session');
     const mockSessions = getMockChatSessions();
     mockSessions.set(sessionData.id, sessionData);
     console.log('✅ Chat session saved to mock database:', sessionData.id);
@@ -566,25 +579,29 @@ export const serverDb = {
     // Save to file for persistence
     saveToFile(CHAT_SESSIONS_FILE, mockSessions);
 
-    // Try to save to Firebase if available
-    if (adminDb) {
-      const firebaseAvailable = await isFirebaseAvailable();
-      if (firebaseAvailable) {
-        try {
-          await adminDb.collection('chatSessions').doc(sessionData.id).set(sessionData);
-          console.log('✅ Chat session also saved to Firebase successfully');
-        } catch (error) {
-          console.error('❌ Error saving chat session to Firebase:', error instanceof Error ? error.message : String(error));
-        }
-      }
-    }
-    
     return sessionData;
   },
 
   async updateChatSession(sessionData: ChatSession): Promise<ChatSession> {
     console.log('🔄 serverDb.updateChatSession called for:', sessionData.id);
     
+    // Try to update Firebase first (primary database)
+    if (adminDb) {
+      const firebaseAvailable = await isFirebaseAvailable();
+      if (firebaseAvailable) {
+        try {
+          console.log('🔥 Attempting to update chat session in Firebase...');
+          await adminDb.collection('chatSessions').doc(sessionData.id).set(sessionData);
+          console.log('✅ Chat session updated in Firebase successfully');
+          return sessionData;
+        } catch (error) {
+          console.error('❌ Error updating chat session in Firebase, falling back to mock database:', error instanceof Error ? error.message : String(error));
+        }
+      }
+    }
+    
+    // Fallback to mock database if Firebase is not available or failed
+    console.log('📱 Using mock database as fallback for chat session update');
     const mockSessions = getMockChatSessions();
     mockSessions.set(sessionData.id, sessionData);
     console.log('✅ Chat session updated in mock database:', sessionData.id);
@@ -592,19 +609,6 @@ export const serverDb = {
     // Save to file for persistence
     saveToFile(CHAT_SESSIONS_FILE, mockSessions);
 
-    // Try to update Firebase if available
-    if (adminDb) {
-      const firebaseAvailable = await isFirebaseAvailable();
-      if (firebaseAvailable) {
-        try {
-          await adminDb.collection('chatSessions').doc(sessionData.id).set(sessionData);
-          console.log('✅ Chat session also updated in Firebase successfully');
-        } catch (error) {
-          console.error('❌ Error updating chat session in Firebase:', error instanceof Error ? error.message : String(error));
-        }
-      }
-    }
-    
     return sessionData;
   },
 
