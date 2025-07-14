@@ -446,46 +446,30 @@ export const serverDb = {
   // Get bots by owner ID
   async getBotsByOwner(ownerId: string): Promise<Bot[]> {
     console.log('📋 serverDb.getBotsByOwner called for:', ownerId);
-    
-    // Always check mock database
-    const mockBots = getMockBots();
-    const mockOwnerBots = Array.from(mockBots.values()).filter(bot => bot.ownerId === ownerId);
-    console.log('📱 Found', mockOwnerBots.length, 'mock bots for owner:', ownerId);
-
-    // If no Firebase, return mock only
-    if (!adminDb) {
-      console.log('✅ Returning mock bots only (no Firebase)');
-      return mockOwnerBots;
-    }
-    
-    // Try Firebase if available
-    const firebaseAvailable = await isFirebaseAvailable();
-    if (firebaseAvailable) {
-      try {
-        console.log('🔥 Attempting to fetch bots from Firebase...');
-        const querySnapshot = await adminDb
-          .collection('bots')
-          .where('ownerId', '==', ownerId)
-          .orderBy('createdAt', 'desc')
-          .get();
-        
-        const firebaseBots: Bot[] = [];
-        querySnapshot.forEach((doc: any) => {
-          firebaseBots.push({ id: doc.id, ...doc.data() } as Bot);
-        });
-        
-        console.log('✅ Found', firebaseBots.length, 'Firebase bots for owner:', ownerId);
-        
-        // If we have Firebase bots, return them (they're the source of truth)
-        if (firebaseBots.length > 0) {
+    if (adminDb) {
+      const firebaseAvailable = await isFirebaseAvailable();
+      if (firebaseAvailable) {
+        try {
+          console.log('🔥 Attempting to fetch bots from Firebase...');
+          const querySnapshot = await adminDb
+            .collection('bots')
+            .where('ownerId', '==', ownerId)
+            .orderBy('createdAt', 'desc')
+            .get();
+          const firebaseBots: Bot[] = [];
+          querySnapshot.forEach((doc: any) => {
+            firebaseBots.push({ id: doc.id, ...doc.data() } as Bot);
+          });
+          console.log('✅ Found', firebaseBots.length, 'Firebase bots for owner:', ownerId);
           return firebaseBots;
+        } catch (error) {
+          console.error('❌ Firebase query failed for bots by owner:', error instanceof Error ? error.message : String(error));
         }
-      } catch (error) {
-        console.error('❌ Firebase query failed for bots by owner:', error instanceof Error ? error.message : String(error));
       }
     }
-    
     // Fallback to mock database
+    const mockBots = getMockBots();
+    const mockOwnerBots = Array.from(mockBots.values()).filter(bot => bot.ownerId === ownerId);
     console.log('🔄 Using mock database as fallback for getBotsByOwner');
     return mockOwnerBots;
   },
@@ -493,46 +477,30 @@ export const serverDb = {
   // Get bots by phone number (fallback for cross-session identification)
   async getBotsByPhoneNumber(phoneNumber: string): Promise<Bot[]> {
     console.log('📱 serverDb.getBotsByPhoneNumber called for:', phoneNumber);
-    
-    // Always check mock database
-    const mockBots = getMockBots();
-    const mockPhoneBots = Array.from(mockBots.values()).filter(bot => bot.ownerPhoneNumber === phoneNumber);
-    console.log('📱 Found', mockPhoneBots.length, 'mock bots for phone:', phoneNumber);
-
-    // If no Firebase, return mock only
-    if (!adminDb) {
-      console.log('✅ Returning mock bots only (no Firebase)');
-      return mockPhoneBots;
-    }
-    
-    // Try Firebase if available
-    const firebaseAvailable = await isFirebaseAvailable();
-    if (firebaseAvailable) {
-      try {
-        console.log('🔥 Attempting to fetch bots from Firebase by phone...');
-        const querySnapshot = await adminDb
-          .collection('bots')
-          .where('ownerPhoneNumber', '==', phoneNumber)
-          .orderBy('createdAt', 'desc')
-          .get();
-        
-        const firebaseBots: Bot[] = [];
-        querySnapshot.forEach((doc: any) => {
-          firebaseBots.push({ id: doc.id, ...doc.data() } as Bot);
-        });
-        
-        console.log('✅ Found', firebaseBots.length, 'Firebase bots for phone:', phoneNumber);
-        
-        // If we have Firebase bots, return them (they're the source of truth)
-        if (firebaseBots.length > 0) {
+    if (adminDb) {
+      const firebaseAvailable = await isFirebaseAvailable();
+      if (firebaseAvailable) {
+        try {
+          console.log('🔥 Attempting to fetch bots from Firebase by phone...');
+          const querySnapshot = await adminDb
+            .collection('bots')
+            .where('ownerPhoneNumber', '==', phoneNumber)
+            .orderBy('createdAt', 'desc')
+            .get();
+          const firebaseBots: Bot[] = [];
+          querySnapshot.forEach((doc: any) => {
+            firebaseBots.push({ id: doc.id, ...doc.data() } as Bot);
+          });
+          console.log('✅ Found', firebaseBots.length, 'Firebase bots for phone:', phoneNumber);
           return firebaseBots;
+        } catch (error) {
+          console.error('❌ Firebase query failed for bots by phone:', error instanceof Error ? error.message : String(error));
         }
-      } catch (error) {
-        console.error('❌ Firebase query failed for bots by phone:', error instanceof Error ? error.message : String(error));
       }
     }
-    
     // Fallback to mock database
+    const mockBots = getMockBots();
+    const mockPhoneBots = Array.from(mockBots.values()).filter(bot => bot.ownerPhoneNumber === phoneNumber);
     console.log('🔄 Using mock database as fallback for getBotsByPhoneNumber');
     return mockPhoneBots;
   },
@@ -540,18 +508,12 @@ export const serverDb = {
   // Enhanced getBotsByOwner that also checks phone number as fallback
   async getBotsByOwnerWithFallback(ownerId: string, phoneNumber?: string): Promise<Bot[]> {
     console.log('🔍 serverDb.getBotsByOwnerWithFallback called for:', ownerId, 'phone:', phoneNumber);
-    
-    // First try to get bots by owner ID
     let bots = await this.getBotsByOwner(ownerId);
-    
-    // If no bots found and we have a phone number, try phone number fallback
     if (bots.length === 0 && phoneNumber) {
       console.log('🔄 No bots found by owner ID, trying phone number fallback...');
       const phoneBots = await this.getBotsByPhoneNumber(phoneNumber);
-      
       if (phoneBots.length > 0) {
         console.log('✅ Found bots by phone number, updating owner IDs...');
-        // Update the owner IDs to the current user ID for future consistency
         for (const bot of phoneBots) {
           bot.ownerId = ownerId;
           await this.updateBot(bot);
@@ -559,7 +521,6 @@ export const serverDb = {
         bots = phoneBots;
       }
     }
-    
     console.log('📊 Total bots found:', bots.length);
     return bots;
   },
@@ -649,52 +610,89 @@ export const serverDb = {
 
   async getChatSessionsByBot(botId: string): Promise<ChatSession[]> {
     console.log('📊 serverDb.getChatSessionsByBot called for:', botId);
-    
+    if (adminDb) {
+      const firebaseAvailable = await isFirebaseAvailable();
+      if (firebaseAvailable) {
+        try {
+          const querySnapshot = await adminDb
+            .collection('chatSessions')
+            .where('botId', '==', botId)
+            .orderBy('lastActivityAt', 'desc')
+            .get();
+          const firebaseSessions: ChatSession[] = [];
+          querySnapshot.forEach((doc: any) => {
+            firebaseSessions.push({ id: doc.id, ...doc.data() } as ChatSession);
+          });
+          console.log('✅ Found', firebaseSessions.length, 'Firebase chat sessions for bot:', botId);
+          return firebaseSessions;
+        } catch (error) {
+          console.error('❌ Firebase query failed for chat sessions by bot:', error instanceof Error ? error.message : String(error));
+        }
+      }
+    }
+    // Fallback to mock database
     const mockSessions = getMockChatSessions();
     const mockBotSessions = Array.from(mockSessions.values()).filter(session => session.botId === botId);
-    console.log('📱 Found', mockBotSessions.length, 'mock sessions for bot:', botId);
-
-    // For development, use mock data only to avoid Firebase delays
-    if (!adminDb) {
-      return mockBotSessions;
-    }
-    
-    // Skip Firebase for now to improve performance
-    // TODO: Re-enable Firebase when needed for production
+    console.log('🔄 Using mock database as fallback for getChatSessionsByBot');
     return mockBotSessions;
   },
 
   async getChatSessionsByUser(userId: string): Promise<ChatSession[]> {
     console.log('👤 serverDb.getChatSessionsByUser called for:', userId);
-    
+    if (adminDb) {
+      const firebaseAvailable = await isFirebaseAvailable();
+      if (firebaseAvailable) {
+        try {
+          const querySnapshot = await adminDb
+            .collection('chatSessions')
+            .where('userId', '==', userId)
+            .where('isAuthenticated', '==', true)
+            .orderBy('lastActivityAt', 'desc')
+            .get();
+          const firebaseSessions: ChatSession[] = [];
+          querySnapshot.forEach((doc: any) => {
+            firebaseSessions.push({ id: doc.id, ...doc.data() } as ChatSession);
+          });
+          console.log('✅ Found', firebaseSessions.length, 'Firebase chat sessions for user:', userId);
+          return firebaseSessions;
+        } catch (error) {
+          console.error('❌ Firebase query failed for chat sessions by user:', error instanceof Error ? error.message : String(error));
+        }
+      }
+    }
+    // Fallback to mock database
     const mockSessions = getMockChatSessions();
     const userSessions = Array.from(mockSessions.values())
       .filter(session => session.userId === userId && session.isAuthenticated)
-      .sort((a, b) => new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime()); // Sort by most recent
-    
-    console.log('📱 Found', userSessions.length, 'authenticated chat sessions for user:', userId);
-
-    // For development, use mock data only to avoid Firebase delays
-    if (!adminDb) {
-      return userSessions;
-    }
-    
-    // Skip Firebase for now to improve performance
-    // TODO: Re-enable Firebase when needed for production
+      .sort((a, b) => new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime());
+    console.log('🔄 Using mock database as fallback for getChatSessionsByUser');
     return userSessions;
   },
 
   async getChatSession(sessionId: string): Promise<ChatSession | null> {
     console.log('💬 serverDb.getChatSession called for:', sessionId);
-    
+    if (adminDb) {
+      const firebaseAvailable = await isFirebaseAvailable();
+      if (firebaseAvailable) {
+        try {
+          const docRef = adminDb.collection('chatSessions').doc(sessionId);
+          const docSnap = await docRef.get();
+          if (docSnap.exists) {
+            console.log('✅ Chat session found in Firebase:', sessionId);
+            return { id: docSnap.id, ...docSnap.data() } as ChatSession;
+          }
+        } catch (error) {
+          console.error('❌ Firebase query failed for chat session:', error instanceof Error ? error.message : String(error));
+        }
+      }
+    }
+    // Fallback to mock database
     const mockSessions = getMockChatSessions();
     const session = mockSessions.get(sessionId);
-    
     if (session) {
-      console.log('✅ Chat session found:', sessionId);
+      console.log('🔄 Using mock database as fallback for getChatSession');
       return session;
     }
-    
     console.log('❌ Chat session not found:', sessionId);
     return null;
   },
