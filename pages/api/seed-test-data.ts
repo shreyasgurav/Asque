@@ -44,6 +44,9 @@ export default async function handler(
       {
         id: 'session_test_1',
         botId: botId,
+        botName: 'Test Bot', // Added
+        botProfilePictureUrl: undefined, // Optional, added for completeness
+        isAuthenticated: true, // Added
         messages: [
           { 
             id: 'msg_1', 
@@ -71,6 +74,9 @@ export default async function handler(
       {
         id: 'session_test_2',
         botId: botId,
+        botName: 'Test Bot', // Added
+        botProfilePictureUrl: undefined, // Optional
+        isAuthenticated: true, // Added
         messages: [
           { 
             id: 'msg_3', 
@@ -98,6 +104,9 @@ export default async function handler(
       {
         id: 'session_test_3',
         botId: botId,
+        botName: 'Test Bot', // Added
+        botProfilePictureUrl: undefined, // Optional
+        isAuthenticated: true, // Added
         messages: [
           { 
             id: 'msg_5', 
@@ -125,6 +134,9 @@ export default async function handler(
       {
         id: 'session_test_4',
         botId: botId,
+        botName: 'Test Bot', // Added
+        botProfilePictureUrl: undefined, // Optional
+        isAuthenticated: true, // Added
         messages: [
           { 
             id: 'msg_7', 
