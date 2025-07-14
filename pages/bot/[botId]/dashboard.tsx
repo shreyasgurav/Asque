@@ -10,6 +10,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { authenticatedFetch } from '@/lib/auth';
 import SEO from '@/components/ui/SEO';
 import Loading from '@/components/ui/Loading';
+import Layout from '@/components/layout/Layout';
 
 interface Bot {
   id: string;
@@ -325,12 +326,20 @@ export default function BotDashboard() {
         }
         setRespondingTo(null);
         setResponseText('');
+        // Show success feedback briefly
+        setError(null);
       } else {
         setError(result.error || 'Failed to respond to question');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error responding to question:', error);
-      setError('Failed to respond to question');
+      if (error.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else if (error.message?.includes('NetworkError') || error.message?.includes('Failed to fetch')) {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError('Failed to respond to question. Please try again.');
+      }
     } finally {
       setIsResponding(false);
     }
@@ -397,7 +406,7 @@ export default function BotDashboard() {
   }
 
   return (
-    <>
+    <Layout>
       <SEO 
         title={`${bot.name} Dashboard`}
         description={`Manage your AI chatbot ${bot.name}. Edit settings, view analytics, and respond to questions.`}
@@ -1135,6 +1144,6 @@ export default function BotDashboard() {
           </div>
         )}
       </ProtectedRoute>
-    </>
+    </Layout>
   );
 } 

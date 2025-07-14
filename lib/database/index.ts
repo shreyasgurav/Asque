@@ -664,6 +664,41 @@ export const serverDb = {
     return mockBotSessions;
   },
 
+  async getChatSessionsByUser(userId: string): Promise<ChatSession[]> {
+    console.log('👤 serverDb.getChatSessionsByUser called for:', userId);
+    
+    const mockSessions = getMockChatSessions();
+    const userSessions = Array.from(mockSessions.values())
+      .filter(session => session.userId === userId && session.isAuthenticated)
+      .sort((a, b) => new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime()); // Sort by most recent
+    
+    console.log('📱 Found', userSessions.length, 'authenticated chat sessions for user:', userId);
+
+    // For development, use mock data only to avoid Firebase delays
+    if (!adminDb) {
+      return userSessions;
+    }
+    
+    // Skip Firebase for now to improve performance
+    // TODO: Re-enable Firebase when needed for production
+    return userSessions;
+  },
+
+  async getChatSession(sessionId: string): Promise<ChatSession | null> {
+    console.log('💬 serverDb.getChatSession called for:', sessionId);
+    
+    const mockSessions = getMockChatSessions();
+    const session = mockSessions.get(sessionId);
+    
+    if (session) {
+      console.log('✅ Chat session found:', sessionId);
+      return session;
+    }
+    
+    console.log('❌ Chat session not found:', sessionId);
+    return null;
+  },
+
   // Unanswered Questions Management
   async createUnansweredQuestion(questionData: UnansweredQuestion): Promise<UnansweredQuestion> {
     console.log('❓ serverDb.createUnansweredQuestion called for bot:', questionData.botId);
@@ -721,7 +756,9 @@ export const serverDb = {
     console.log('❓ serverDb.getUnansweredQuestionsByBot called for:', botId);
     
     const mockQuestions = getMockUnansweredQuestions();
-    const mockBotQuestions = Array.from(mockQuestions.values()).filter(question => question.botId === botId);
+    // Filter to only return questions that are NOT answered
+    const mockBotQuestions = Array.from(mockQuestions.values())
+      .filter(question => question.botId === botId && !question.isAnswered);
     console.log('📱 Found', mockBotQuestions.length, 'mock unanswered questions for bot:', botId);
 
     // For development, use mock data only to avoid Firebase delays

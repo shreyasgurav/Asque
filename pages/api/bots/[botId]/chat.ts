@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { serverDb } from '@/lib/database';
 import { Bot, ChatMessage, ApiResponse, ChatSession, UnansweredQuestion } from '@/types';
 import { generateBotResponse } from '@/lib/ai';
+import { verifyAuthToken } from '@/lib/auth/server';
 
 interface ChatRequest {
   message: string;
@@ -194,20 +195,31 @@ function calculateConfidence(userQuery: string, relevantMessages: any[]): number
 }
 
 // Helper function to get or create chat session
-async function getOrCreateChatSession(botId: string, sessionId: string, userAgent?: string): Promise<ChatSession> {
-  // Try to get existing session from mock database
-  const mockSessions = (global as any).__MOCK_CHAT_SESSIONS__ || new Map();
-  let session = mockSessions.get(sessionId);
+async function getOrCreateChatSession(
+  botId: string, 
+  sessionId: string, 
+  bot: Bot,
+  userAgent?: string,
+  userId?: string,
+  userPhoneNumber?: string
+): Promise<ChatSession> {
+  // Try to get existing session
+  let session = await serverDb.getChatSession(sessionId);
   
   if (!session) {
     // Create new session
     session = {
       id: sessionId,
       botId,
+      botName: bot.name,
+      botProfilePictureUrl: bot.profilePictureUrl,
       messages: [],
       startedAt: new Date(),
       lastActivityAt: new Date(),
       userAgent,
+      userId,
+      userPhoneNumber,
+      isAuthenticated: !!userId,
       messageCount: 0,
       averageResponseTime: 0,
       failedQuestions: 0,
@@ -216,6 +228,12 @@ async function getOrCreateChatSession(botId: string, sessionId: string, userAgen
     };
     
     await serverDb.createChatSession(session);
+  } else if (userId && !session.isAuthenticated) {
+    // Upgrade anonymous session to authenticated
+    session.userId = userId;
+    session.userPhoneNumber = userPhoneNumber;
+    session.isAuthenticated = true;
+    await serverDb.updateChatSession(session);
   }
   
   return session;
@@ -316,6 +334,19 @@ export default async function handler(
     const finalSessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const userAgent = req.headers['user-agent'];
 
+    // Check for authentication (optional for chat)
+    let authUser = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        authUser = await verifyAuthToken(token);
+        console.log('🔐 Authenticated chat request from user:', authUser.uid);
+      } catch (error) {
+        console.log('⚠️ Invalid auth token in chat request, proceeding as anonymous');
+      }
+    }
+
     if (!message || !message.trim()) {
       return res.status(400).json({
         success: false,
@@ -344,7 +375,14 @@ export default async function handler(
     }
 
     // Get or create chat session for analytics
-    const chatSession = await getOrCreateChatSession(botId, finalSessionId, userAgent);
+    const chatSession = await getOrCreateChatSession(
+      botId, 
+      finalSessionId, 
+      bot, 
+      userAgent,
+      authUser?.uid,
+      authUser?.phoneNumber
+    );
 
     let confidence = 0;
     let botResponse = '';

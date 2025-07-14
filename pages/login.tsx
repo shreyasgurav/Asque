@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import PhoneLogin from '@/components/auth/PhoneLogin';
 import SEO from '@/components/ui/SEO';
+import Layout from '@/components/layout/Layout';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -46,30 +47,7 @@ export default function LoginPage() {
         title="Login"
         description="Sign in to AsQue to create and manage your AI chatbots"
       />
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
-        {/* Header */}
-        <div className="bg-slate-800/30 backdrop-blur-xl border-b border-slate-700/30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-                  <img 
-                    src="/AsQue Logo NoBG.png" 
-                    alt="AsQue Logo" 
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <button
-                  onClick={() => router.push('/')}
-                  className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent hover:from-blue-300 hover:to-purple-300 transition-all duration-200"
-                >
-                  AsQue
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <Layout>
         {/* Main Content */}
         <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-md w-full space-y-8">
@@ -155,7 +133,7 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
-      </div>
+      </Layout>
     </>
   );
 } 

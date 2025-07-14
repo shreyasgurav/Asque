@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import SEO from '@/components/ui/SEO';
+import Layout from '@/components/layout/Layout';
 
 export default function MyBotsPage() {
   const router = useRouter();
@@ -114,54 +115,7 @@ export default function MyBotsPage() {
         description="Manage your AI chatbots and share them with others"
       />
       <ProtectedRoute>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-          {/* Navigation */}
-          <nav className="bg-slate-800/30 backdrop-blur-xl border-b border-slate-700/30 sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center py-4">
-                <div className="flex items-center">
-                  <Link href="/" className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg overflow-hidden">
-                      <img 
-                        src="/AsQue Logo NoBG.png" 
-                        alt="AsQue Logo" 
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <span className="text-2xl font-bold text-white">AsQue</span>
-                  </Link>
-                  <div className="ml-4 flex items-center gap-2">
-                    <span className="text-slate-400">•</span>
-                    <span className="text-slate-300 text-sm">My Bots</span>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={() => router.push("/create")}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Create New Bot
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={handleSignOut}
-                    className="text-slate-300 hover:text-white"
-                  >
-                    <span className="text-sm mr-2">
-                      {user?.phoneNumber || 'User'}
-                    </span>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </nav>
-
+        <Layout>
           {/* Content */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="mb-8">
@@ -292,7 +246,7 @@ export default function MyBotsPage() {
               </div>
             )}
           </div>
-        </div>
+        </Layout>
       </ProtectedRoute>
     </>
   );

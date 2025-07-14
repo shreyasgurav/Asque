@@ -12,6 +12,7 @@ import { useAuth } from '@/components/auth/AuthContext'
 import { authenticatedFetch } from '@/lib/auth'
 import SEO from '@/components/ui/SEO'
 import Loading from '@/components/ui/Loading'
+import Layout from '@/components/layout/Layout';
 
 interface TrainingMessage {
   id: string
@@ -292,7 +293,7 @@ export default function TrainBotPage() {
   }
 
   return (
-    <>
+    <Layout>
       <SEO 
         title={`Training ${bot.name}`}
         description={`Train your AI chatbot ${bot.name} by chatting with it. Teach it everything it needs to know.`}
@@ -776,6 +777,6 @@ export default function TrainBotPage() {
           </div>
         )}
       </ProtectedRoute>
-    </>
+    </Layout>
   )
 } 

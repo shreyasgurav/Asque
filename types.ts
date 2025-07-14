@@ -101,11 +101,17 @@ export interface ChatMessage {
 export interface ChatSession {
   id: string;
   botId: string;
+  botName: string; // Cache bot name for easier display
+  botProfilePictureUrl?: string; // Cache bot profile picture
   messages: ChatMessage[];
   startedAt: Date;
   lastActivityAt: Date;
   userAgent?: string;
   ipAddress?: string;
+  // User authentication
+  userId?: string; // Firebase auth UID when user is logged in
+  userPhoneNumber?: string; // User's phone number for identification
+  isAuthenticated: boolean; // Whether this session is authenticated
   // Analytics data
   messageCount: number;
   averageResponseTime: number;
@@ -173,6 +179,26 @@ export interface RespondToQuestionResponse extends ApiResponse {
     respondedAt: Date;
     addedToTraining: boolean;
   };
+}
+
+// User chat history interfaces
+export interface UserChatSummary {
+  sessionId: string;
+  botId: string;
+  botName: string;
+  botProfilePictureUrl?: string;
+  lastMessage: string;
+  lastMessageTime: Date;
+  messageCount: number;
+  isActive: boolean; // Whether the conversation is ongoing
+}
+
+export interface GetUserChatsResponse extends ApiResponse {
+  data?: UserChatSummary[];
+}
+
+export interface GetChatSessionResponse extends ApiResponse {
+  data?: ChatSession;
 }
 
 // Generic API response type

@@ -1,18 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { nanoid } from 'nanoid';
-import { Bot, ChatMessage, ChatWithBotRequest, ChatWithBotResponse } from '@/types';
+import { Bot, ChatMessage, ChatWithBotRequest, ChatWithBotResponse, ChatSession, GetChatSessionResponse } from '@/types';
+import { useAuth } from '@/components/auth/AuthContext';
+import { authenticatedFetch } from '@/lib/auth';
+import LoginPopup from '@/components/auth/LoginPopup';
+import Layout from '@/components/layout/Layout';
 
 export default function PublicBotPage() {
   const router = useRouter();
-  const { botId } = router.query;
+  const { botId, sessionId: urlSessionId } = router.query;
+  const { user, isAuthenticated } = useAuth();
   const [bot, setBot] = useState<Bot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [sessionId] = useState(() => `session_${nanoid(12)}`);
+  const [sessionId] = useState(() => 
+    typeof urlSessionId === 'string' ? urlSessionId : `session_${nanoid(12)}`
+  );
+  const [showLoginPopup, setShowLoginPopup] = useState(false);
+  const [messagesSent, setMessagesSent] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -21,6 +30,13 @@ export default function PublicBotPage() {
       fetchBot(botId);
     }
   }, [botId]);
+
+  useEffect(() => {
+    // Load existing chat session if user is authenticated and sessionId is provided
+    if (isAuthenticated && typeof urlSessionId === 'string' && bot) {
+      loadChatSession(urlSessionId);
+    }
+  }, [isAuthenticated, urlSessionId, bot]);
 
   useEffect(() => {
     scrollToBottom();
@@ -46,8 +62,8 @@ export default function PublicBotPage() {
 
       if (result.success && result.data) {
         setBot(result.data);
-        // Add welcome message if bot is deployed
-        if (result.data.status === 'deployed') {
+        // Add welcome message if bot is deployed and no existing session
+        if (result.data.status === 'deployed' && !urlSessionId) {
           const welcomeMessage: ChatMessage = {
             id: `msg_${nanoid()}`,
             type: 'bot',
@@ -66,6 +82,43 @@ export default function PublicBotPage() {
     }
   };
 
+  const loadChatSession = async (sessionId: string) => {
+    try {
+      const response = await authenticatedFetch(`/api/chats/${sessionId}`);
+      const result: GetChatSessionResponse = await response.json();
+
+      if (result.success && result.data) {
+        setMessages(result.data.messages);
+        setMessagesSent(result.data.messageCount);
+        console.log(`✅ Loaded existing chat session with ${result.data.messages.length} messages`);
+      } else {
+        console.log('❌ Failed to load chat session, starting fresh');
+        // If session doesn't exist or access denied, start fresh
+        if (bot && bot.status === 'deployed') {
+          const welcomeMessage: ChatMessage = {
+            id: `msg_${nanoid()}`,
+            type: 'bot',
+            content: bot.welcomeMessage || `👋 Hi! I'm ${bot.name}. ${bot.description || 'I\'m here to help answer your questions!'} How can I assist you today?`,
+            timestamp: new Date()
+          };
+          setMessages([welcomeMessage]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading chat session:', error);
+      // Fallback to fresh session
+      if (bot && bot.status === 'deployed') {
+        const welcomeMessage: ChatMessage = {
+          id: `msg_${nanoid()}`,
+          type: 'bot',
+          content: bot.welcomeMessage || `👋 Hi! I'm ${bot.name}. ${bot.description || 'I\'m here to help answer your questions!'} How can I assist you today?`,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+      }
+    }
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || !bot || isTyping) return;
@@ -80,6 +133,14 @@ export default function PublicBotPage() {
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsTyping(true);
+    setMessagesSent(prev => prev + 1);
+
+    // Show login popup after 3 messages if user is not authenticated
+    if (!isAuthenticated && messagesSent >= 2) {
+      setShowLoginPopup(true);
+      setIsTyping(false);
+      return;
+    }
 
     try {
       const requestData: ChatWithBotRequest = {
@@ -88,11 +149,16 @@ export default function PublicBotPage() {
         sessionId
       };
 
-      const response = await fetch(`/api/bots/${botId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData)
-      });
+      const response = isAuthenticated 
+        ? await authenticatedFetch(`/api/bots/${botId}/chat`, {
+            method: 'POST',
+            body: JSON.stringify(requestData)
+          })
+        : await fetch(`/api/bots/${botId}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
+          });
 
       const result: ChatWithBotResponse = await response.json();
 
@@ -207,44 +273,7 @@ export default function PublicBotPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Enhanced Header */}
-      <div className="bg-slate-800/30 backdrop-blur-xl border-b border-slate-700/30 sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center py-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-                {bot.profilePictureUrl ? (
-                  <img 
-                    src={bot.profilePictureUrl} 
-                    alt={`${bot.name} profile`} 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <img 
-                    src="/AsQue Logo NoBG.png" 
-                    alt="AsQue Logo" 
-                    className="w-full h-full object-contain"
-                  />
-                )}
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-white">{bot.name}</h1>
-                {bot.description && (
-                  <p className="text-sm text-slate-400">{bot.description}</p>
-                )}
-              </div>
-            </div>
-            <div className="ml-auto">
-              <div className="flex items-center space-x-2 text-xs text-slate-400">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span>Online</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <Layout>
       {/* Enhanced Chat Area */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-gradient-to-br from-slate-800/50 to-slate-700/50 border border-slate-600/50 rounded-2xl backdrop-blur-sm min-h-[600px] flex flex-col shadow-2xl">
@@ -395,6 +424,20 @@ export default function PublicBotPage() {
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Login Popup */}
+      <LoginPopup
+        isOpen={showLoginPopup}
+        onClose={() => setShowLoginPopup(false)}
+        onSuccess={() => {
+          setShowLoginPopup(false);
+          // Continue with the message that triggered the popup
+          if (inputMessage.trim()) {
+            sendMessage(new Event('submit') as any);
+          }
+        }}
+        botName={bot?.name}
+      />
+    </Layout>
   );
 } 
