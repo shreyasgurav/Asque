@@ -28,17 +28,30 @@ export default function MyChats() {
       setLoading(true);
       setError(null);
 
+      console.log('🔍 Fetching chats for user:', user?.uid);
+      
       const response = await authenticatedFetch('/api/chats');
+      console.log('🔍 Chats response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🔍 Chats response error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
       const result: GetUserChatsResponse = await response.json();
+      console.log('🔍 Chats response data:', result);
 
       if (result.success && result.data) {
         setChats(result.data);
+        console.log('🔍 Chats set:', result.data?.length || 0);
       } else {
+        console.error('🔍 Chats API returned error:', result.error);
         setError(result.error || 'Failed to load chat history');
       }
     } catch (err: any) {
       console.error('Error fetching chats:', err);
-      setError('Failed to load chat history. Please try again.');
+      setError(`Failed to load chat history: ${err.message}`);
     } finally {
       setLoading(false);
     }

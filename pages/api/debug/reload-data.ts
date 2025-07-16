@@ -44,9 +44,9 @@ export default function handler(
     
     // Clear existing global data
     if (typeof global !== 'undefined') {
-      (global as any).__MOCK_BOTS__ = undefined;
-      (global as any).__MOCK_CHAT_SESSIONS__ = undefined;
-      (global as any).__MOCK_UNANSWERED_QUESTIONS__ = undefined;
+      global.__MOCK_BOTS__ = undefined;
+      global.__MOCK_CHAT_SESSIONS__ = undefined;
+      global.__MOCK_UNANSWERED_QUESTIONS__ = undefined;
     }
     
     // Import the database module to trigger reinitialization

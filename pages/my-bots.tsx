@@ -46,7 +46,9 @@ export default function MyBotsPage() {
       console.log('🔍 Response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errorText = await response.text();
+        console.error('🔍 Response error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
       
       const result = await response.json();
@@ -56,6 +58,7 @@ export default function MyBotsPage() {
         setBots(result.data || []);
         console.log('🔍 Bots set:', result.data?.length || 0);
       } else {
+        console.error('🔍 API returned error:', result.error);
         setError(result.error || 'Failed to load bots');
       }
     } catch (err: any) {
@@ -63,7 +66,7 @@ export default function MyBotsPage() {
       if (err.name === 'AbortError') {
         setError('Request timed out. Please try again.');
       } else {
-      setError('Failed to load bots. Please try again.');
+        setError(`Failed to load bots: ${err.message}`);
       }
     } finally {
       console.log('🔍 Setting loading to false');
