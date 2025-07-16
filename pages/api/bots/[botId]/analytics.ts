@@ -79,11 +79,21 @@ const calculateAnalytics = (sessions: any[]): BotAnalytics => {
     ? new Date(Math.max(...sessions.map(s => new Date(s.endedAt || s.startedAt).getTime())))
     : undefined;
 
+  // Calculate successful responses and failed questions
+  const successfulResponses = sessions.reduce((sum, session) => 
+    sum + (session.successfulResponses || 0), 0);
+  const failedQuestions = sessions.reduce((sum, session) => 
+    sum + (session.failedQuestions || 0), 0);
+  const successRate = totalMessages > 0 ? (successfulResponses / totalMessages) * 100 : 0;
+
   return {
     totalVisitors,
     totalChats,
     totalMessages,
     averageResponseTime,
+    successfulResponses,
+    failedQuestions,
+    successRate,
     lastActiveAt,
     dailyVisitors: [], // Simplified for now
     weeklyChats: [], // Simplified for now
