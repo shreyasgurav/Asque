@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="w-full py-6 flex flex-col items-center justify-center bg-slate-900/90 border-t border-slate-800/50">
+    <footer className="w-full py-6 flex flex-col items-center justify-center bg-slate-900/95 border-t border-slate-800/50">
       <div className="flex items-center gap-2">
         <img src="/AsQue Logo NoBG.png" alt="AsQue Logo" className="w-8 h-8 rounded-xl" />
         <span className="text-lg font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">AsQue</span>

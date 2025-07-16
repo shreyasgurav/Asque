@@ -40,7 +40,12 @@ export default function Header() {
     <nav className="fixed top-0 w-full z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          <div className="flex items-center space-x-3">
+          <button
+            onClick={() => router.push('/')}
+            className="flex items-center focus:outline-none group"
+            aria-label="Go to home page"
+            style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
+          >
             <div className="relative">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
                 <img 
@@ -50,13 +55,7 @@ export default function Header() {
                 />
               </div>
             </div>
-            <div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                AsQue
-              </span>
-              <div className="text-xs text-slate-400 -mt-1">AI Chatbot Platform</div>
-            </div>
-          </div>
+          </button>
 
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
