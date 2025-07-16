@@ -164,7 +164,8 @@ export const authenticatedFetch = async (
   options: RequestInit = {}
 ): Promise<Response> => {
   const token = await getCurrentUserToken();
-  
+  console.log('authenticatedFetch: token', token); // DEBUG LOG
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),

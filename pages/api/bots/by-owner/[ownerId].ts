@@ -11,6 +11,7 @@ const handler = async (
   req: AuthenticatedRequest,
   res: NextApiResponse<BotsResponse>
 ) => {
+  console.log('API called, headers:', req.headers); // DEBUG LOG
   const { ownerId } = req.query;
   const authenticatedUserId = req.user.uid;
   const userPhoneNumber = req.user.phoneNumber;
@@ -48,6 +49,7 @@ const handler = async (
     const bots = await serverDb.getBotsByOwnerWithFallback(authenticatedUserId, userPhoneNumber);
     
     console.log('✅ Found bots:', bots.length);
+    console.log('Bots returned to client:', bots); // DEBUG LOG
     
     return res.status(200).json({
       success: true,

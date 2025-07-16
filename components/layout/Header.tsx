@@ -84,32 +84,32 @@ export default function Header() {
                     <button
                       onClick={() => { router.push('/my-bots'); setDropdownOpen(false); }}
                       className="block w-full text-left px-4 py-2 text-slate-200 hover:bg-slate-700"
-                    >
-                      My Bots
-                    </button>
-                    <button
+                >
+                  My Bots
+                </button>
+                                  <button
                       onClick={() => { router.push('/create'); setDropdownOpen(false); }}
                       className="block w-full text-left px-4 py-2 text-slate-200 hover:bg-slate-700"
-                    >
-                      Create Bot
-                    </button>
+                  >
+                    Create Bot
+                  </button>
                     <div className="border-t border-slate-700 my-1" />
-                    <button
+                <button
                       onClick={() => { handleSignOut(); setDropdownOpen(false); }}
                       className="block w-full text-left px-4 py-2 text-red-400 hover:bg-slate-700"
-                    >
-                      Sign Out
-                    </button>
+                >
+                  Sign Out
+                </button>
                   </div>
                 )}
               </div>
             ) : (
-              <button
-                onClick={() => router.push('/login')}
-                className="text-slate-300 hover:text-white transition-colors px-3 py-2 rounded-md"
-              >
-                Sign In
-              </button>
+                <button
+                  onClick={() => router.push('/login')}
+                  className="text-slate-300 hover:text-white transition-colors px-3 py-2 rounded-md"
+                >
+                  Sign In
+                </button>
             )}
           </div>
         </div>

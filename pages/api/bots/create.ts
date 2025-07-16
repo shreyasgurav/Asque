@@ -58,20 +58,13 @@ const handler = async (
       welcomeMessage: welcomeMessage?.trim() || undefined,
       ownerId,
       ownerPhoneNumber: ownerPhoneNumber || undefined,
-      status: 'training',
+      status: 'deployed', // CHANGED: Make bot public by default
       trainingMessages: [],
       publicUrl,
       createdAt: now,
       updatedAt: now
     };
-
-    console.log('📦 Created bot object:', {
-      id: newBot.id,
-      name: newBot.name,
-      ownerId: newBot.ownerId,
-      ownerPhoneNumber: newBot.ownerPhoneNumber,
-      status: newBot.status
-    });
+    console.log('📦 Created bot object (should be deployed):', newBot);
     console.log('🔍 Debug - Full bot object:', JSON.stringify(newBot, null, 2));
 
     // Save to database

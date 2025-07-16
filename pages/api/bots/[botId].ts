@@ -55,13 +55,13 @@ const handler = async (
           bot.ownerId = req.user.uid;
           await serverDb.updateBot(bot);
         } else {
-          console.log('❌ Access denied: User does not own this bot');
+        console.log('❌ Access denied: User does not own this bot');
           console.log('  Bot ownerPhoneNumber:', bot.ownerPhoneNumber);
-          return res.status(403).json({
-            success: false,
-            error: 'Access denied: You do not own this bot',
-            timestamp: new Date()
-          });
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: You do not own this bot',
+          timestamp: new Date()
+        });
         }
       }
 

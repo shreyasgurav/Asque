@@ -14,6 +14,9 @@ export interface BotAnalytics {
   totalChats: number;
   totalMessages: number;
   averageResponseTime: number;
+  successfulResponses: number;
+  failedQuestions: number;
+  successRate: number;
   lastActiveAt?: Date;
   dailyVisitors: { date: string; count: number }[];
   weeklyChats: { week: string; count: number }[];

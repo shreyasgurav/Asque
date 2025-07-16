@@ -155,10 +155,10 @@ export default function PublicBotPage() {
             body: JSON.stringify(requestData)
           })
         : await fetch(`/api/bots/${botId}/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestData)
-          });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
+      });
 
       const result: ChatWithBotResponse = await response.json();
 

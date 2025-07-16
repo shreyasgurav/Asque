@@ -68,11 +68,11 @@ const handler = async (
             bot.ownerId = req.user.uid;
             await serverDb.updateBot(bot);
           } else {
-            return res.status(403).json({
-              success: false,
-              error: 'Access denied: You do not own this bot',
-              timestamp: new Date()
-            });
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: You do not own this bot',
+          timestamp: new Date()
+        });
           }
         }
       } else {

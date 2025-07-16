@@ -50,6 +50,30 @@ const getAuthToken = (req: NextApiRequest): string | null => {
 // Verify Firebase auth token and return user info
 export const verifyAuthToken = async (token: string): Promise<AuthenticatedUser> => {
   try {
+    // In development mode, if Firebase is not configured, allow test tokens
+    if (process.env.NODE_ENV === 'development' && !getApps().length) {
+      console.log('🔧 Development mode: Using test authentication');
+      
+      // Allow test tokens for development
+      if (token === 'test-token') {
+        return {
+          uid: 'JxNSv886lwN8CYMdqAityIbtFA43', // Use the existing user ID from mock data
+          email: 'test@example.com',
+          phoneNumber: '+911234567890',
+        };
+      }
+      
+      // Allow any token that starts with 'dev-'
+      if (token.startsWith('dev-')) {
+        const uid = token.replace('dev-', '');
+        return {
+          uid,
+          email: `${uid}@example.com`,
+          phoneNumber: '+911234567890',
+        };
+      }
+    }
+    
     const auth = getAuth();
     const decodedToken = await auth.verifyIdToken(token);
     

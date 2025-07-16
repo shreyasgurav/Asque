@@ -63,7 +63,7 @@ export default function MyBotsPage() {
       if (err.name === 'AbortError') {
         setError('Request timed out. Please try again.');
       } else {
-        setError('Failed to load bots. Please try again.');
+      setError('Failed to load bots. Please try again.');
       }
     } finally {
       console.log('🔍 Setting loading to false');

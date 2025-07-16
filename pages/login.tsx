@@ -48,9 +48,9 @@ export default function LoginPage() {
         description="Sign in to AsQue to create and manage your AI chatbots"
       />
       <Layout>
-        {/* Main Content */}
-        <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full space-y-8">
+      {/* Main Content */}
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
             {/* Welcome Section */}
             <div className="text-center space-y-6">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/25">
@@ -61,12 +61,12 @@ export default function LoginPage() {
               
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
-                  Welcome to AsQue
-                </h1>
+              Welcome to AsQue
+            </h1>
                 <p className="text-slate-400 text-lg">
-                  Sign in to create and manage your AI chatbots
-                </p>
-              </div>
+              Sign in to create and manage your AI chatbots
+            </p>
+          </div>
 
               {/* Features */}
               <div className="grid grid-cols-1 gap-3 text-sm">
@@ -93,21 +93,21 @@ export default function LoginPage() {
 
             {/* Login Form */}
             <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-              <PhoneLogin 
-                redirectTo={redirectTo}
-                onSuccess={() => {
-                  console.log('✅ Login successful, redirecting to:', redirectTo);
-                }}
-              />
+          <PhoneLogin 
+            redirectTo={redirectTo}
+            onSuccess={() => {
+              console.log('✅ Login successful, redirecting to:', redirectTo);
+            }}
+          />
             </div>
 
             {/* Additional Info */}
-            <div className="text-center">
+          <div className="text-center">
               <p className="text-sm text-slate-400">
-                Don't have an account? No worries!{' '}
-                <br />
+              Don't have an account? No worries!{' '}
+              <br />
                 <span className="text-slate-300">We'll create one for you automatically.</span>
-              </p>
+            </p>
             </div>
 
             {/* Trust Indicators */}

@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
-  },
   // Optimize images and enable domains for potential future use
   images: {
     domains: ['firebasestorage.googleapis.com'],
