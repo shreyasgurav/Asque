@@ -42,12 +42,12 @@ export default async function handler(
   try {
     console.log('🔄 Reloading data from Firebase database...');
     const { serverDb } = require('@/lib/database');
-
+    
     // Fetch real data from Firebase
     const bots = await serverDb.getAllBots();
     const chatSessions = await serverDb.getAllChatSessions();
     const unansweredQuestions = await serverDb.getAllUnansweredQuestions();
-
+    
     console.log('✅ Data loaded successfully');
     console.log('📊 Bots:', bots.length);
     console.log('💬 Chat Sessions:', chatSessions.length);

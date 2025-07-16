@@ -7,39 +7,31 @@ import {
 import { db } from '@/lib/firebase';
 import { adminDb } from '@/lib/firebase-admin';
 import { Bot, ChatSession, UnansweredQuestion, ChatAnalytics, BotAnalytics } from '@/types';
-import fs from 'fs';
-import path from 'path';
 
-// Mock database file paths
-const DEV_DATA_DIR = path.join(process.cwd(), '.dev-data');
-const BOTS_FILE = path.join(DEV_DATA_DIR, 'bots.json');
-const CHAT_SESSIONS_FILE = path.join(DEV_DATA_DIR, 'chatSessions.json');
-const UNANSWERED_QUESTIONS_FILE = path.join(DEV_DATA_DIR, 'unansweredQuestions.json');
+// Helper function to calculate analytics
+const calculateAnalytics = (sessions: ChatSession[]): BotAnalytics => {
+  const totalVisitors = sessions.length;
+  const totalChats = sessions.reduce((sum, session) => sum + session.messageCount, 0);
+  const totalMessages = sessions.reduce((sum, session) => sum + session.messages.length, 0);
+  const averageResponseTime = sessions.length > 0 
+    ? sessions.reduce((sum, session) => sum + (session.averageResponseTime || 0), 0) / sessions.length 
+    : 0;
+  const successfulResponses = sessions.reduce((sum, session) => sum + session.successfulResponses, 0);
+  const failedQuestions = sessions.reduce((sum, session) => sum + session.failedQuestions, 0);
 
-// Ensure dev data directory exists
-if (!fs.existsSync(DEV_DATA_DIR)) {
-  fs.mkdirSync(DEV_DATA_DIR, { recursive: true });
-}
-
-// Mock database helper functions
-const loadMockData = (filePath: string) => {
-  try {
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf-8');
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.warn(`Could not read ${filePath}:`, error);
-  }
-  return {};
-};
-
-const saveMockData = (filePath: string, data: any) => {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error(`Could not save to ${filePath}:`, error);
-  }
+  return {
+    totalVisitors,
+    totalChats,
+    totalMessages,
+    averageResponseTime,
+    successfulResponses,
+    failedQuestions,
+    successRate: totalMessages > 0 ? (successfulResponses / totalMessages) * 100 : 0,
+    dailyVisitors: [],
+    weeklyChats: [],
+    topQuestions: [],
+    responseTimeHistory: []
+  };
 };
 
 // Client-side database operations (for frontend)
@@ -70,51 +62,13 @@ export const clientDb = {
   }
 };
 
-// Helper function to calculate analytics
-const calculateAnalytics = (sessions: ChatSession[]): BotAnalytics => {
-  const totalVisitors = sessions.length;
-  const totalChats = sessions.reduce((sum, session) => sum + session.messageCount, 0);
-  const totalMessages = sessions.reduce((sum, session) => sum + session.messages.length, 0);
-  const averageResponseTime = sessions.length > 0 
-    ? sessions.reduce((sum, session) => sum + (session.averageResponseTime || 0), 0) / sessions.length 
-    : 0;
-  const successfulResponses = sessions.reduce((sum, session) => sum + session.successfulResponses, 0);
-  const failedQuestions = sessions.reduce((sum, session) => sum + session.failedQuestions, 0);
-
-  return {
-    totalVisitors,
-    totalChats,
-    totalMessages,
-    averageResponseTime,
-    successfulResponses,
-    failedQuestions,
-    successRate: totalMessages > 0 ? (successfulResponses / totalMessages) * 100 : 0,
-    dailyVisitors: [],
-    weeklyChats: [],
-    topQuestions: [],
-    responseTimeHistory: []
-  };
-};
-
 // Server-side database operations (for API routes)
 export const serverDb = {
   // Get bot by ID
   async getBot(botId: string): Promise<Bot | null> {
     if (!adminDb) {
-      // Use mock database
-      const bots = loadMockData(BOTS_FILE);
-      const bot = bots[botId];
-      if (bot) {
-        return {
-          ...bot,
-          createdAt: new Date(bot.createdAt),
-          updatedAt: new Date(bot.updatedAt),
-          deployedAt: bot.deployedAt ? new Date(bot.deployedAt) : undefined
-        } as Bot;
-      }
-      return null;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const docRef = adminDb.collection('bots').doc(botId);
       const docSnap = await docRef.get();
@@ -132,7 +86,6 @@ export const serverDb = {
   async getBotWithAnalytics(botId: string): Promise<Bot | null> {
     const bot = await this.getBot(botId);
     if (!bot) return null;
-
     const sessions = await this.getChatSessionsByBot(botId);
     bot.analytics = calculateAnalytics(sessions);
     return bot;
@@ -141,20 +94,8 @@ export const serverDb = {
   // Create new bot
   async createBot(botData: Bot): Promise<Bot> {
     if (!adminDb) {
-      // Use mock database
-      const bots = loadMockData(BOTS_FILE);
-      const cleanBotData = {
-        ...botData,
-        description: botData.description || '',
-        deployedAt: botData.deployedAt || null,
-        profilePictureUrl: botData.profilePictureUrl || null,
-        welcomeMessage: botData.welcomeMessage || null,
-      };
-      bots[botData.id] = cleanBotData;
-      saveMockData(BOTS_FILE, bots);
-      return botData;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const cleanBotData = {
         ...botData,
@@ -174,20 +115,8 @@ export const serverDb = {
   // Update bot
   async updateBot(botData: Bot): Promise<Bot> {
     if (!adminDb) {
-      // Use mock database
-      const bots = loadMockData(BOTS_FILE);
-      const cleanBotData = {
-        ...botData,
-        description: botData.description || '',
-        deployedAt: botData.deployedAt || null,
-        profilePictureUrl: botData.profilePictureUrl || null,
-        welcomeMessage: botData.welcomeMessage || null,
-      };
-      bots[botData.id] = cleanBotData;
-      saveMockData(BOTS_FILE, bots);
-      return botData;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const cleanBotData = {
         ...botData,
@@ -207,25 +136,8 @@ export const serverDb = {
   // Get bots by owner ID
   async getBotsByOwner(ownerId: string): Promise<Bot[]> {
     if (!adminDb) {
-      // Use mock database
-      const bots = loadMockData(BOTS_FILE);
-      const userBots: Bot[] = [];
-      
-      Object.values(bots).forEach((bot: any) => {
-        if (bot.ownerId === ownerId) {
-          userBots.push({
-            ...bot,
-            createdAt: new Date(bot.createdAt),
-            updatedAt: new Date(bot.updatedAt),
-            deployedAt: bot.deployedAt ? new Date(bot.deployedAt) : undefined
-          } as Bot);
-        }
-      });
-      
-      // Sort by createdAt descending
-      return userBots.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const querySnapshot = await adminDb
         .collection('bots')
@@ -246,25 +158,8 @@ export const serverDb = {
   // Get bots by phone number
   async getBotsByPhoneNumber(phoneNumber: string): Promise<Bot[]> {
     if (!adminDb) {
-      // Use mock database
-      const bots = loadMockData(BOTS_FILE);
-      const phoneBots: Bot[] = [];
-      
-      Object.values(bots).forEach((bot: any) => {
-        if (bot.ownerPhoneNumber === phoneNumber) {
-          phoneBots.push({
-            ...bot,
-            createdAt: new Date(bot.createdAt),
-            updatedAt: new Date(bot.updatedAt),
-            deployedAt: bot.deployedAt ? new Date(bot.deployedAt) : undefined
-          } as Bot);
-        }
-      });
-      
-      // Sort by createdAt descending
-      return phoneBots.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const querySnapshot = await adminDb
         .collection('bots')
@@ -301,16 +196,8 @@ export const serverDb = {
   // Delete bot
   async deleteBot(botId: string): Promise<boolean> {
     if (!adminDb) {
-      // Use mock database
-      const bots = loadMockData(BOTS_FILE);
-      if (bots[botId]) {
-        delete bots[botId];
-        saveMockData(BOTS_FILE, bots);
-        return true;
-      }
-      return false;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       await adminDb.collection('bots').doc(botId).delete();
       return true;
@@ -323,13 +210,8 @@ export const serverDb = {
   // Chat Sessions Management
   async createChatSession(sessionData: ChatSession): Promise<ChatSession> {
     if (!adminDb) {
-      // Use mock database
-      const sessions = loadMockData(CHAT_SESSIONS_FILE);
-      sessions[sessionData.id] = sessionData;
-      saveMockData(CHAT_SESSIONS_FILE, sessions);
-      return sessionData;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       await adminDb.collection('chatSessions').doc(sessionData.id).set(sessionData);
       return sessionData;
@@ -341,13 +223,8 @@ export const serverDb = {
 
   async updateChatSession(sessionData: ChatSession): Promise<ChatSession> {
     if (!adminDb) {
-      // Use mock database
-      const sessions = loadMockData(CHAT_SESSIONS_FILE);
-      sessions[sessionData.id] = sessionData;
-      saveMockData(CHAT_SESSIONS_FILE, sessions);
-      return sessionData;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       await adminDb.collection('chatSessions').doc(sessionData.id).set(sessionData);
       return sessionData;
@@ -359,23 +236,8 @@ export const serverDb = {
 
   async getChatSessionsByBot(botId: string): Promise<ChatSession[]> {
     if (!adminDb) {
-      // Use mock database
-      const sessions = loadMockData(CHAT_SESSIONS_FILE);
-      const botSessions: ChatSession[] = [];
-      
-      Object.values(sessions).forEach((session: any) => {
-        if (session.botId === botId) {
-          botSessions.push({
-            ...session,
-            startedAt: new Date(session.startedAt),
-            lastActivityAt: new Date(session.lastActivityAt)
-          } as ChatSession);
-        }
-      });
-      
-      return botSessions.sort((a, b) => b.lastActivityAt.getTime() - a.lastActivityAt.getTime());
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const querySnapshot = await adminDb
         .collection('chatSessions')
@@ -395,23 +257,8 @@ export const serverDb = {
 
   async getChatSessionsByUser(userId: string): Promise<ChatSession[]> {
     if (!adminDb) {
-      // Use mock database
-      const sessions = loadMockData(CHAT_SESSIONS_FILE);
-      const userSessions: ChatSession[] = [];
-      
-      Object.values(sessions).forEach((session: any) => {
-        if (session.userId === userId && session.isAuthenticated) {
-          userSessions.push({
-            ...session,
-            startedAt: new Date(session.startedAt),
-            lastActivityAt: new Date(session.lastActivityAt)
-          } as ChatSession);
-        }
-      });
-      
-      return userSessions.sort((a, b) => b.lastActivityAt.getTime() - a.lastActivityAt.getTime());
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       // Use simpler query to avoid complex composite index requirements
       const querySnapshot = await adminDb
@@ -442,19 +289,8 @@ export const serverDb = {
 
   async getChatSession(sessionId: string): Promise<ChatSession | null> {
     if (!adminDb) {
-      // Use mock database
-      const sessions = loadMockData(CHAT_SESSIONS_FILE);
-      const session = sessions[sessionId];
-      if (session) {
-        return {
-          ...session,
-          startedAt: new Date(session.startedAt),
-          lastActivityAt: new Date(session.lastActivityAt)
-        } as ChatSession;
-      }
-      return null;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const docRef = adminDb.collection('chatSessions').doc(sessionId);
       const docSnap = await docRef.get();
@@ -471,13 +307,8 @@ export const serverDb = {
   // Unanswered Questions Management
   async createUnansweredQuestion(questionData: UnansweredQuestion): Promise<UnansweredQuestion> {
     if (!adminDb) {
-      // Use mock database
-      const questions = loadMockData(UNANSWERED_QUESTIONS_FILE);
-      questions[questionData.id] = questionData;
-      saveMockData(UNANSWERED_QUESTIONS_FILE, questions);
-      return questionData;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       await adminDb.collection('unansweredQuestions').doc(questionData.id).set(questionData);
       return questionData;
@@ -489,13 +320,8 @@ export const serverDb = {
 
   async updateUnansweredQuestion(questionData: UnansweredQuestion): Promise<UnansweredQuestion> {
     if (!adminDb) {
-      // Use mock database
-      const questions = loadMockData(UNANSWERED_QUESTIONS_FILE);
-      questions[questionData.id] = questionData;
-      saveMockData(UNANSWERED_QUESTIONS_FILE, questions);
-      return questionData;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       await adminDb.collection('unansweredQuestions').doc(questionData.id).set(questionData);
       return questionData;
@@ -507,23 +333,8 @@ export const serverDb = {
 
   async getUnansweredQuestionsByBot(botId: string): Promise<UnansweredQuestion[]> {
     if (!adminDb) {
-      // Use mock database
-      const questions = loadMockData(UNANSWERED_QUESTIONS_FILE);
-      const botQuestions: UnansweredQuestion[] = [];
-      
-      Object.values(questions).forEach((question: any) => {
-        if (question.botId === botId && !question.isAnswered) {
-          botQuestions.push({
-            ...question,
-            timestamp: new Date(question.timestamp),
-            respondedAt: question.respondedAt ? new Date(question.respondedAt) : undefined
-          } as UnansweredQuestion);
-        }
-      });
-      
-      return botQuestions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const querySnapshot = await adminDb
         .collection('unansweredQuestions')
@@ -543,19 +354,8 @@ export const serverDb = {
 
   async getUnansweredQuestion(questionId: string): Promise<UnansweredQuestion | null> {
     if (!adminDb) {
-      // Use mock database
-      const questions = loadMockData(UNANSWERED_QUESTIONS_FILE);
-      const question = questions[questionId];
-      if (question) {
-        return {
-          ...question,
-          timestamp: new Date(question.timestamp),
-          respondedAt: question.respondedAt ? new Date(question.respondedAt) : undefined
-        } as UnansweredQuestion;
-      }
-      return null;
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
-    
     try {
       const docRef = adminDb.collection('unansweredQuestions').doc(questionId);
       const docSnap = await docRef.get();

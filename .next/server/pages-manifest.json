@@ -3,8 +3,8 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
-  "/api/bots/by-owner/[ownerId]": "pages/api/bots/by-owner/[ownerId].js",
   "/my-bots": "pages/my-bots.js",
+  "/api/chats": "pages/api/chats.js",
   "/my-chats": "pages/my-chats.js",
-  "/api/chats": "pages/api/chats.js"
+  "/api/bots/by-owner/[ownerId]": "pages/api/bots/by-owner/[ownerId].js"
 }
