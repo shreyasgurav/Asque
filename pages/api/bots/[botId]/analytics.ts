@@ -79,11 +79,31 @@ const calculateAnalytics = (sessions: any[]): BotAnalytics => {
     ? new Date(Math.max(...sessions.map(s => new Date(s.endedAt || s.startedAt).getTime())))
     : undefined;
 
+  // Calculate successful and failed responses
+  let successfulResponses = 0;
+  let failedQuestions = 0;
+  sessions.forEach(session => {
+    if (Array.isArray(session.messages)) {
+      session.messages.forEach((msg: any) => {
+        if (msg.metadata && typeof msg.metadata.wasAnswered === 'boolean') {
+          if (msg.metadata.wasAnswered) successfulResponses++;
+          else failedQuestions++;
+        }
+      });
+    }
+  });
+  const successRate = (successfulResponses + failedQuestions) > 0
+    ? successfulResponses / (successfulResponses + failedQuestions)
+    : 0;
+
   return {
     totalVisitors,
     totalChats,
     totalMessages,
     averageResponseTime,
+    successfulResponses,
+    failedQuestions,
+    successRate,
     lastActiveAt,
     dailyVisitors: [], // Simplified for now
     weeklyChats: [], // Simplified for now

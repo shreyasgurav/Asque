@@ -10,7 +10,7 @@ interface ReloadResponse {
   };
 }
 
-export default function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ReloadResponse>
 ) {
@@ -40,43 +40,34 @@ export default function handler(
   }
 
   try {
-    console.log('🔄 Force reloading mock database from files...');
-    
-    // Clear existing global data
-    if (typeof global !== 'undefined') {
-      global.__MOCK_BOTS__ = undefined;
-      global.__MOCK_CHAT_SESSIONS__ = undefined;
-      global.__MOCK_UNANSWERED_QUESTIONS__ = undefined;
-    }
-    
-    // Import the database module to trigger reinitialization
+    console.log('🔄 Reloading data from Firebase database...');
     const { serverDb } = require('@/lib/database');
-    
-    // Access the data to trigger loading
-    const mockBots = (global as any).__MOCK_BOTS__ || new Map();
-    const mockChatSessions = (global as any).__MOCK_CHAT_SESSIONS__ || new Map();
-    const mockUnansweredQuestions = (global as any).__MOCK_UNANSWERED_QUESTIONS__ || new Map();
-    
-    console.log('✅ Data reloaded successfully');
-    console.log('📊 Bots:', mockBots.size);
-    console.log('💬 Chat Sessions:', mockChatSessions.size);
-    console.log('❓ Unanswered Questions:', mockUnansweredQuestions.size);
+
+    // Fetch real data from Firebase
+    const bots = await serverDb.getAllBots();
+    const chatSessions = await serverDb.getAllChatSessions();
+    const unansweredQuestions = await serverDb.getAllUnansweredQuestions();
+
+    console.log('✅ Data loaded successfully');
+    console.log('📊 Bots:', bots.length);
+    console.log('💬 Chat Sessions:', chatSessions.length);
+    console.log('❓ Unanswered Questions:', unansweredQuestions.length);
 
     return res.status(200).json({
       success: true,
-      message: 'Mock database reloaded successfully',
+      message: 'Database loaded successfully',
       data: {
-        botsLoaded: mockBots.size,
-        chatSessionsLoaded: mockChatSessions.size,
-        unansweredQuestionsLoaded: mockUnansweredQuestions.size
+        botsLoaded: bots.length,
+        chatSessionsLoaded: chatSessions.length,
+        unansweredQuestionsLoaded: unansweredQuestions.length
       }
     });
 
   } catch (error) {
-    console.error('Error reloading mock database:', error);
+    console.error('Error loading database:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to reload mock database',
+      message: 'Failed to load database',
       data: {
         botsLoaded: 0,
         chatSessionsLoaded: 0,
