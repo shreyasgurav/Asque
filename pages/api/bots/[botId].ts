@@ -148,6 +148,56 @@ const handler = async (
     }
   }
 
+  if (req.method === 'DELETE') {
+    try {
+      // Get current bot
+      const bot = await serverDb.getBot(botId);
+      if (!bot) {
+        return res.status(404).json({
+          success: false,
+          error: 'Bot not found',
+          timestamp: new Date()
+        });
+      }
+      // Check ownership (same as GET)
+      if (bot.ownerId !== req.user.uid) {
+        if (req.user.phoneNumber && bot.ownerPhoneNumber === req.user.phoneNumber) {
+          // Update the bot's ownerId to the current user ID for future consistency
+          bot.ownerId = req.user.uid;
+          await serverDb.updateBot(bot);
+        } else {
+          return res.status(403).json({
+            success: false,
+            error: 'Access denied: You do not own this bot',
+            timestamp: new Date()
+          });
+        }
+      }
+      // Delete the bot
+      const deleted = await serverDb.deleteBot(botId);
+      if (deleted) {
+        return res.status(200).json({
+          success: true,
+          data: undefined,
+          timestamp: new Date()
+        });
+      } else {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to delete bot',
+          timestamp: new Date()
+        });
+      }
+    } catch (error) {
+      console.error('💥 Error deleting bot:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        timestamp: new Date()
+      });
+    }
+  }
+
   return res.status(405).json({
     success: false,
     error: 'Method not allowed',

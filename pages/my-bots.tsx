@@ -1,22 +1,89 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Bot } from '@/types';
 import { useAuth } from '@/components/auth/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { signOut, authenticatedFetch } from '@/lib/auth';
+import { signOut, authenticatedFetch, formatPhoneNumber } from '@/lib/auth';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import SEO from '@/components/ui/SEO';
 import Layout from '@/components/layout/Layout';
+import { User, ArrowLeft } from 'lucide-react';
+
+// Add UserDropdown component for the user icon dropdown in the header
+const UserDropdown: React.FC<{ user: any }> = ({ user }) => {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative ml-2" ref={ref}>
+      <div
+        className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center cursor-pointer"
+        onClick={() => setOpen((v) => !v)}
+        onMouseEnter={() => setOpen(true)}
+      >
+        <User size={18} className="text-white" />
+      </div>
+      {open && (
+        <div
+          className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-50 animate-fade-in"
+          onMouseLeave={() => setOpen(false)}
+        >
+          <div className="px-4 py-3 border-b border-slate-800 text-xs text-slate-400 font-semibold">
+            {user?.phoneNumber ? formatPhoneNumber(user.phoneNumber) : 'No phone'}
+          </div>
+          <button
+            className="block w-full text-left px-4 py-3 text-slate-200 hover:bg-slate-800 text-sm"
+            onClick={() => { router.push('/my-bots'); setOpen(false); }}
+          >
+            My Bots
+          </button>
+          <button
+            className="block w-full text-left px-4 py-3 text-slate-200 hover:bg-slate-800 text-sm"
+            onClick={() => { router.push('/create'); setOpen(false); }}
+          >
+            Create Bot
+          </button>
+          <div className="border-t border-slate-800 my-1" />
+          <button
+            className="block w-full text-left px-4 py-3 text-red-400 hover:bg-slate-800 text-sm"
+            onClick={async () => { await signOut(); setOpen(false); }}
+          >
+            Sign Out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function MyBotsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [bots, setBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     console.log('🔍 MyBots useEffect - authLoading:', authLoading, 'user:', !!user);
@@ -24,6 +91,23 @@ export default function MyBotsPage() {
       fetchUserBots();
     }
   }, [user, authLoading]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   const fetchUserBots = async () => {
     if (!user) return;
@@ -118,11 +202,106 @@ export default function MyBotsPage() {
         description="Manage your AI chatbots and share them with others"
       />
       <ProtectedRoute>
-        <Layout>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+          {/* Custom Header with Centered Logo */}
+          <nav className="fixed top-0 w-full z-50 backdrop-blur-md">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between py-4">
+                <button
+                  onClick={() => router.push('/')}
+                  className="text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 p-2 rounded-full"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <img 
+                  src="/AsQue Logo NoBG.png" 
+                  alt="AsQue Logo" 
+                  className="w-8 h-8 object-contain"
+                />
+                {isAuthenticated ? (
+                  <div className="relative" ref={dropdownRef}>
+                    <div
+                      className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center cursor-pointer"
+                      onClick={() => setDropdownOpen((v) => !v)}
+                      onMouseEnter={() => setDropdownOpen(true)}
+                    >
+                      <User size={18} className="text-white" />
+                    </div>
+                    {dropdownOpen && (
+                      <div
+                        className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-50 animate-fade-in"
+                        onMouseLeave={() => setDropdownOpen(false)}
+                      >
+                        <div className="px-4 py-3 border-b border-slate-800 text-xs text-slate-400 font-semibold">
+                          {user?.phoneNumber ? formatPhoneNumber(user.phoneNumber) : 'No phone'}
+                        </div>
+                        <button
+                          className="block w-full text-left px-4 py-3 text-slate-200 hover:bg-slate-800 text-sm"
+                          onClick={() => { router.push('/my-bots'); setDropdownOpen(false); }}
+                        >
+                          My Bots
+                        </button>
+                        <button
+                          className="block w-full text-left px-4 py-3 text-slate-200 hover:bg-slate-800 text-sm"
+                          onClick={() => { router.push('/create'); setDropdownOpen(false); }}
+                        >
+                          Create Bot
+                        </button>
+                        <div className="border-t border-slate-800 my-1" />
+                        <button
+                          className="block w-full text-left px-4 py-3 text-red-400 hover:bg-slate-800 text-sm"
+                          onClick={() => { signOut(); setDropdownOpen(false); }}
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => router.push('/login')}
+                    className="ml-2 signInButton signInButtonSmall"
+                  >
+                    Sign In
+                  </button>
+                )}
+                <style jsx>{`
+                  .signInButton {
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 0px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 15px;
+                    padding: 7px 14px;
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 13px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    backdrop-filter: blur(4px);
+                  }
+                  .signInButtonSmall {
+                    padding: 3px 8px;
+                    font-size: 11px;
+                  }
+                  .signInButton:hover {
+                    background: rgba(255, 255, 255, 0.8);
+                    border-color: rgba(255, 255, 255, 0.3);
+                    color: black;
+                  }
+                `}</style>
+              </div>
+            </div>
+          </nav>
+
+          {/* My Bots Title */}
+          <div className="pt-24 pb-8 text-center">
+            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-wide drop-shadow" style={{fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 800}}>
+              My Bots
+            </h1>
+          </div>
+
           {/* Content */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white">My Bots</h1>
               <p className="mt-2 text-slate-400">
                 Manage your chatbots and share them with others
               </p>
@@ -178,78 +357,113 @@ export default function MyBotsPage() {
 
             {/* Bots Grid */}
             {!loading && !error && bots.length > 0 && (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {bots.map((bot) => (
-                  <Card key={bot.id} className="bg-slate-800/40 backdrop-blur-sm border-slate-700/50 hover:bg-slate-800/60 transition-all duration-200">
-                    <div className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-white mb-1">
-                            {bot.name}
-                          </h3>
-                          {bot.description && (
-                            <p className="text-slate-400 text-sm mb-3 line-clamp-2">
-                              {bot.description}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant={bot.status === 'deployed' ? 'default' : 'secondary'}>
-                          {bot.status === 'deployed' ? 'Live' : 'Training'}
-                        </Badge>
-                      </div>
+                  <div key={bot.id} className="group relative bg-slate-800/20 border border-slate-700/30 rounded-xl p-5 hover:bg-slate-800/30 hover:border-slate-600/50 transition-all duration-300">
+                    {/* Status Indicator */}
+                    <div className="absolute top-4 right-4">
+                      <div className={`w-2 h-2 rounded-full ${bot.status === 'deployed' ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`}></div>
+                    </div>
 
-                      <div className="mb-4">
-                        <div className="flex items-center text-sm text-slate-500">
-                          <span>Training: {bot.trainingMessages?.length || 0} messages</span>
-                          <span className="mx-2">•</span>
-                          <span>Created {formatDate(bot.createdAt)}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex space-x-2">
-                        <Button
-                          onClick={() => router.push(`/bot/${bot.id}/dashboard`)}
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    {/* Bot Avatar */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center">
+                        {bot.profilePictureUrl ? (
+                          <img
+                            src={bot.profilePictureUrl}
+                            alt={bot.name}
+                            className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>';
+                            }}
+                          />
+                        ) : (
+                          <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
-                          Manage Bot
-                        </Button>
+                        )}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-white truncate">
+                          {bot.name}
+                        </h3>
+                        <p className="text-sm text-slate-400">
+                          {bot.status === 'deployed' ? 'Live' : 'Training'}
+                        </p>
+                      </div>
+                    </div>
 
+                    {/* Description */}
+                    {bot.description && (
+                      <p className="text-slate-300 text-sm mb-4 line-clamp-2 leading-relaxed">
+                        {bot.description}
+                      </p>
+                    )}
+
+                    {/* Stats */}
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
+                      <span>{bot.trainingMessages?.length || 0} messages</span>
+                      <span>{bot.unansweredQuestions?.length || 0} unanswered</span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => router.push(`/bot/${bot.id}/dashboard`)}
+                        className="flex-1 bg-slate-700/50 hover:bg-slate-700/70 text-white border border-slate-600/50 hover:border-slate-500/50 transition-all duration-200"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Manage
+                      </Button>
+                      
                       {bot.status === 'deployed' && (
-                        <div className="mt-3 pt-3 border-t border-slate-700/50">
-                          <p className="text-xs text-slate-500 mb-1">Share this link:</p>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="text"
-                              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/bot/${bot.id}`}
-                              readOnly
-                              className="flex-1 text-xs bg-slate-700/30 border border-slate-600/50 rounded px-2 py-1 text-slate-300"
-                            />
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                if (typeof window !== 'undefined') {
-                                  navigator.clipboard.writeText(`${window.location.origin}/bot/${bot.id}`);
-                                }
-                              }}
-                              className="text-blue-400 hover:text-blue-300 text-xs"
-                            >
-                              Copy
-                            </Button>
-                          </div>
-                        </div>
+                        <Button
+                          onClick={() => router.push(`/bot/${bot.id}`)}
+                          className="bg-slate-600/50 hover:bg-slate-600/70 text-white border border-slate-500/50 hover:border-slate-400/50 transition-all duration-200"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                        </Button>
                       )}
                     </div>
-                  </Card>
+
+                    {/* Share Link for Deployed Bots */}
+                    {bot.status === 'deployed' && (
+                      <div className="mt-3 pt-3 border-t border-slate-700/30">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/bot/${bot.id}`}
+                            readOnly
+                            className="flex-1 text-xs bg-slate-700/20 border border-slate-600/30 rounded px-2 py-1 text-slate-300"
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                navigator.clipboard.writeText(`${window.location.origin}/bot/${bot.id}`);
+                              }
+                            }}
+                            className="text-slate-400 hover:text-slate-300 text-xs p-1"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
           </div>
-        </Layout>
+        </div>
       </ProtectedRoute>
     </>
   );

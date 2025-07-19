@@ -293,389 +293,351 @@ export default function TrainBotPage() {
   }
 
   return (
-    <Layout>
+    <Layout showFooter={false} showHeader={false}>
       <SEO 
         title={`Training ${bot.name}`}
         description={`Train your AI chatbot ${bot.name} by chatting with it. Teach it everything it needs to know.`}
       />
       <ProtectedRoute>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col">
-          {/* Enhanced Top Bar */}
-          <div className="bg-slate-800/30 backdrop-blur-xl border-b border-slate-700/30 sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-6 py-4">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.push("/my-bots")}
-                    className="text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </Button>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center overflow-hidden">
-                      {bot.profilePictureUrl ? (
-                        <img 
-                          src={bot.profilePictureUrl} 
-                          alt={`${bot.name} profile`} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.warn('Profile picture failed to load:', bot.profilePictureUrl);
-                            (e.target as HTMLImageElement).style.display = 'none';
-                            (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>';
-                          }}
-                        />
-                      ) : (
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                      )}
-                    </div>
-                    <div>
-                      <h1 className="text-xl font-semibold text-white flex items-center gap-2">
-                        {bot.name}
-                        <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                        </svg>
-                      </h1>
-                      <p className="text-sm text-slate-400">Training Mode • AI Learning</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowSettings(true)}
-                    className="bg-slate-700/30 border-slate-600/50 text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Settings
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowMemoryBank(!showMemoryBank)}
-                    className="bg-slate-700/30 border-slate-600/50 text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200"
-                  >
-                    {showMemoryBank ? (
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                    Memory Bank
-                    <Badge variant="secondary" className="ml-2 bg-slate-600/50 text-slate-300">
-                      {bot.trainingMessages.length}
-                    </Badge>
-                  </Button>
-                  <Button
-                    onClick={handleDeployBot}
-                    disabled={bot.trainingMessages.length === 0 || isDeploying}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-green-500/25"
-                  >
-                    {isDeploying ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                        Deploying...
-                      </>
-                    ) : (
-                      <>
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    Deploy Bot
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div className="flex h-screen bg-[var(--background)] text-[var(--foreground)]">
           {/* Main Chat Area */}
-          <div className="flex-1 flex overflow-hidden">
-            {/* Chat Messages */}
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${showMemoryBank ? "lg:w-2/3" : "w-full"}`}>
-              <div className="flex-1 overflow-y-auto px-6 py-8">
-                <div className="max-w-4xl mx-auto space-y-8">
-                  {/* Enhanced Welcome Message */}
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden">
-                      {bot.profilePictureUrl ? (
-                        <img 
-                          src={bot.profilePictureUrl} 
-                          alt={`${bot.name} profile`} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/50 p-6 shadow-xl">
-                        <div className="flex items-center gap-2 mb-3">
-                          <h2 className="text-lg font-semibold text-white">👋 Welcome to Training Mode</h2>
+          <div className="flex-1 flex flex-col h-screen bg-[var(--background)]">
+            {/* Header - Fixed at Top */}
+            <div className="bg-slate-800/30 backdrop-blur-xl border-b border-slate-700/30 sticky top-0 z-50">
+              <div className="max-w-7xl mx-auto px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => router.push("/my-bots")}
+                      className="text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 p-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+                          {bot.name}
                           <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                           </svg>
-                        </div>
-                        <p className="text-slate-300 leading-relaxed">
-                          I'm your AI assistant ready to learn! Share knowledge, documents, or have conversations with me.
-                          Everything you teach me will help me assist others better. Let's start building my knowledge base
-                          together.
-                        </p>
-                        <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-700/50">
-                          <div className="flex items-center gap-2 text-sm text-slate-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            <span>Interactive Learning</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-slate-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                            </svg>
-                            <span>Memory Retention</span>
-                          </div>
-                        </div>
-                      </Card>
+                        </h1>
+                        <p className="text-sm text-slate-400">Training Mode • AI Learning</p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Training Messages */}
-                  {bot.trainingMessages.map((message, index) => (
-                    <div key={message.id} className="space-y-4">
-                      {/* User Message */}
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1 group">
-                          <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/50 p-6 shadow-xl hover:shadow-2xl transition-all duration-200">
-                            <p className="text-white whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                            <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-700/50">
-                              <p className="text-xs text-slate-500">{new Date(message.timestamp).toLocaleString()}</p>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteTrainingMessage(message.id)}
-                                className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </Button>
-                            </div>
-                          </Card>
-                        </div>
-                      </div>
-
-                      {/* Bot Response */}
-                      {botResponses[message.id] && (
-                        <div className="flex items-start gap-4 ml-14">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden">
-                            {bot.profilePictureUrl ? (
-                              <img 
-                                src={bot.profilePictureUrl} 
-                                alt={`${bot.name} profile`} 
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border-blue-500/30 p-6 shadow-xl">
-                              <p className="text-blue-100 leading-relaxed">{botResponses[message.id]}</p>
-                            </Card>
-                          </div>
-                        </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowMemoryBank(!showMemoryBank)}
+                      className="bg-slate-700/30 border-slate-600/50 text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200"
+                    >
+                      {showMemoryBank ? (
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
                       )}
-                    </div>
-                  ))}
-
-                  {/* Enhanced Typing Indicator */}
-                  {isTyping && (
-                    <div className="flex items-start gap-4 ml-14">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden">
-                        {bot.profilePictureUrl ? (
-                          <img 
-                            src={bot.profilePictureUrl} 
-                            alt={`${bot.name} profile`} 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border-blue-500/30 p-6 shadow-xl">
-                          <div className="flex items-center gap-3">
-                            <div className="flex space-x-1">
-                              <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                              <div
-                                className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                                style={{ animationDelay: "0.1s" }}
-                              ></div>
-                              <div
-                                className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                                style={{ animationDelay: "0.2s" }}
-                              ></div>
-                            </div>
-                            <span className="text-blue-200 text-sm">AI is thinking...</span>
-                          </div>
-                        </Card>
-                      </div>
-                    </div>
-                  )}
-
-                  <div ref={chatEndRef} />
+                      Memory Bank
+                      <Badge variant="secondary" className="ml-2 bg-slate-600/50 text-slate-300">
+                        {bot.trainingMessages.length}
+                      </Badge>
+                    </Button>
+                    <Button
+                      onClick={handleDeployBot}
+                      disabled={bot.trainingMessages.length === 0 || isDeploying}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-green-500/25"
+                    >
+                      {isDeploying ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                          Deploying...
+                        </>
+                      ) : (
+                        <>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Deploy
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Enhanced Input Area */}
-              <div className="border-t border-slate-700/30 bg-slate-800/20 backdrop-blur-xl p-6">
-                <div className="max-w-4xl mx-auto">
-                  <form onSubmit={handleSubmitTraining} className="relative">
-                    <div className="relative">
-                      <Textarea
-                        ref={inputRef}
-                        value={trainingInput}
-                        onChange={(e) => setTrainingInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Share knowledge, ask questions, or paste documents to train your AI assistant..."
-                        className="w-full px-6 py-4 pr-16 bg-slate-800/50 backdrop-blur-sm border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none transition-all duration-300 min-h-[60px] max-h-[200px] shadow-lg"
-                        disabled={isSubmitting}
+            {/* Chat Area - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <div className="max-w-4xl mx-auto p-4 space-y-6">
+                {/* Enhanced Welcome Message */}
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden">
+                    {bot.profilePictureUrl ? (
+                      <img 
+                        src={bot.profilePictureUrl} 
+                        alt={`${bot.name} profile`} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>';
+                        }}
                       />
-                      <Button
+                    ) : (
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="bg-slate-800/80 text-slate-200 rounded-2xl shadow-md mr-12 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <h2 className="text-lg font-semibold text-white">👋 Welcome to Training Mode</h2>
+                        <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                      </div>
+                      <div className="whitespace-pre-wrap break-words">
+                        I'm your AI assistant ready to learn! Share knowledge, documents, or have conversations with me.
+                        Everything you teach me will help me assist others better. Let's start building my knowledge base
+                        together.
+                      </div>
+                      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-700/50">
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          <span>Interactive Learning</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                          </svg>
+                          <span>Knowledge Building</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Training Messages */}
+                {bot.trainingMessages.map((message, index) => (
+                  <div key={message.id} className="space-y-4">
+                    {/* User Message */}
+                    <div className="flex gap-4 justify-end">
+                      <div className="max-w-[80%] p-4 rounded-2xl shadow-md bg-blue-600 text-white rounded-2xl shadow-md ml-12">
+                        <div className="whitespace-pre-wrap break-words">
+                          {message.content}
+                        </div>
+                      </div>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Bot Response */}
+                    {botResponses[message.id] && (
+                      <div className="flex gap-4 justify-start">
+                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {bot.profilePictureUrl ? (
+                            <img
+                              src={bot.profilePictureUrl}
+                              alt={`${bot.name} profile`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-white text-sm">🤖</span>';
+                              }}
+                            />
+                          ) : (
+                            <span className="text-white text-sm">🤖</span>
+                          )}
+                        </div>
+                        <div className="bg-slate-800/80 text-slate-200 rounded-2xl shadow-md mr-12">
+                          <div className="whitespace-pre-wrap break-words p-4">
+                            {botResponses[message.id]}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Typing Indicator */}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="flex items-start gap-3 max-w-[80%]">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                        {bot.profilePictureUrl ? (
+                          <img
+                            src={bot.profilePictureUrl}
+                            alt={`${bot.name} profile`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-white text-sm">🤖</span>';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-white text-sm">🤖</span>
+                        )}
+                      </div>
+                      <div className="bg-[var(--muted)] text-[var(--muted-foreground)] p-3 rounded-xl rounded-bl-none">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-[var(--muted-foreground)] rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-[var(--muted-foreground)] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                          <div className="w-2 h-2 bg-[var(--muted-foreground)] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div ref={chatEndRef} />
+              </div>
+            </div>
+
+            {/* Input Area - Fixed at Bottom */}
+            <div className="sticky bottom-0 bg-[var(--background)] p-4 w-full">
+              <div className="max-w-3xl mx-auto">
+                <form onSubmit={handleSubmitTraining} className="relative bg-[var(--input-background)] rounded-2xl border border-white/10 p-2 shadow-xl">
+                  <div className="flex items-end gap-3">
+                    <textarea
+                      ref={inputRef}
+                      value={trainingInput}
+                      onChange={(e) => setTrainingInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Teach me something..."
+                      className="flex-1 bg-transparent resize-none border-0 outline-none min-h-[40px] max-h-32 py-2 px-2 text-[var(--foreground)] placeholder:text-[var(--placeholder-foreground)] text-base leading-tight overflow-y-hidden focus:outline-none focus:ring-0 placeholder:opacity-50"
+                      rows={1}
+                      disabled={isSubmitting}
+                    />
+                    <div className="pb-0">
+                      <button
                         type="submit"
                         disabled={!trainingInput.trim() || isSubmitting}
-                        className="absolute right-2 bottom-2 w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 rounded-xl shadow-lg"
+                        className={`p-3 rounded-full transition-colors ${
+                          trainingInput.trim() && !isSubmitting
+                            ? 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:bg-[var(--primary)]/90'
+                            : 'bg-[var(--muted)] text-[var(--muted-foreground)] cursor-not-allowed opacity-40'
+                        }`}
+                        aria-label="Send message"
                       >
                         {isSubmitting ? (
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
                         ) : (
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                           </svg>
                         )}
-                      </Button>
+                      </button>
                     </div>
-                    <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
-                      <span>Press Enter to send, Shift+Enter for new line</span>
-                      <span>{trainingInput.length}/2000</span>
-                    </div>
-                  </form>
+                  </div>
+                </form>
+                <div className="text-center text-xs text-[var(--muted-foreground)] mt-2">
+                  Press Enter to send, Shift+Enter for new line • {trainingInput.length}/2000
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Enhanced Memory Bank Sidebar */}
-            {showMemoryBank && (
-              <div className="w-1/3 border-l border-slate-700/30 bg-slate-800/20 backdrop-blur-xl transition-all duration-300">
-                <div className="p-6 h-full flex flex-col">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">Memory Bank</h3>
-                      <p className="text-sm text-slate-400">{bot.trainingMessages.length} knowledge entries</p>
-                    </div>
+          {/* Enhanced Memory Bank Sidebar */}
+          {showMemoryBank && (
+            <div className="w-1/3 border-l border-slate-700/30 bg-slate-800/20 backdrop-blur-xl transition-all duration-300">
+              <div className="p-6 h-full flex flex-col">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
                   </div>
-
-                  <div className="flex-1 overflow-y-auto space-y-4">
-                    {bot.trainingMessages.length === 0 ? (
-                      <Card className="bg-slate-800/30 backdrop-blur-sm border-slate-700/50 p-6 text-center">
-                        <div className="w-12 h-12 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
-                        </div>
-                        <p className="text-slate-400 text-sm mb-2">No training data yet</p>
-                        <p className="text-slate-500 text-xs">Start chatting to build your AI's knowledge base!</p>
-                      </Card>
-                    ) : (
-                      bot.trainingMessages.map((message) => (
-                        <Card
-                          key={message.id}
-                          className="bg-slate-800/30 backdrop-blur-sm border-slate-700/50 p-4 hover:bg-slate-800/50 transition-all duration-200 group"
-                        >
-                          {message.category && (
-                            <Badge
-                              variant="secondary"
-                              className="mb-3 bg-purple-600/20 text-purple-300 border-purple-600/30"
-                            >
-                              {message.category}
-                            </Badge>
-                          )}
-                          <p className="text-sm text-slate-300 line-clamp-3 mb-3 leading-relaxed">
-                            {message.summary || message.content}
-                          </p>
-                          {message.keywords && message.keywords.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-3">
-                              {message.keywords.slice(0, 3).map((keyword, idx) => (
-                                <Badge
-                                  key={idx}
-                                  variant="outline"
-                                  className="text-xs bg-blue-600/10 text-blue-300 border-blue-600/30"
-                                >
-                                  {keyword}
-                                </Badge>
-                              ))}
-                              {message.keywords.length > 3 && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs bg-slate-600/20 text-slate-400 border-slate-600/30"
-                                >
-                                  +{message.keywords.length - 3}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-slate-500">
-                              {new Date(message.timestamp).toLocaleDateString()}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteTrainingMessage(message.id)}
-                              className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </Button>
-                          </div>
-                        </Card>
-                      ))
-                    )}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Memory Bank</h3>
+                    <p className="text-sm text-slate-400">{bot.trainingMessages.length} knowledge entries</p>
                   </div>
                 </div>
+
+                <div className="flex-1 overflow-y-auto space-y-4">
+                  {bot.trainingMessages.length === 0 ? (
+                    <Card className="bg-slate-800/30 backdrop-blur-sm border-slate-700/50 p-6 text-center">
+                      <div className="w-12 h-12 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </div>
+                      <p className="text-slate-400 text-sm mb-2">No training data yet</p>
+                      <p className="text-slate-500 text-xs">Start chatting to build your AI's knowledge base!</p>
+                    </Card>
+                  ) : (
+                    bot.trainingMessages.map((message) => (
+                      <Card
+                        key={message.id}
+                        className="bg-slate-800/30 backdrop-blur-sm border-slate-700/50 p-4 hover:bg-slate-800/50 transition-all duration-200 group"
+                      >
+                        {message.category && (
+                          <Badge
+                            variant="secondary"
+                            className="mb-3 bg-purple-600/20 text-purple-300 border-purple-600/30"
+                          >
+                            {message.category}
+                          </Badge>
+                        )}
+                        <p className="text-sm text-slate-300 line-clamp-3 mb-3 leading-relaxed">
+                          {message.summary || message.content}
+                        </p>
+                        {message.keywords && message.keywords.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {message.keywords.slice(0, 3).map((keyword, idx) => (
+                              <Badge
+                                key={idx}
+                                variant="outline"
+                                className="text-xs bg-blue-600/10 text-blue-300 border-blue-600/30"
+                              >
+                                {keyword}
+                              </Badge>
+                            ))}
+                            {message.keywords.length > 3 && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-slate-600/20 text-slate-400 border-slate-600/30"
+                              >
+                                +{message.keywords.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-500">
+                            {new Date(message.timestamp).toLocaleDateString()}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteTrainingMessage(message.id)}
+                            className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </Button>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Settings Modal */}

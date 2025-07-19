@@ -157,8 +157,7 @@ export default function PhoneLogin({ onSuccess, redirectTo = "/my-bots" }: Phone
               >
                 <Phone className="w-8 h-8 text-slate-300" />
               </motion.div>
-              <h1 className="text-3xl font-bold text-white mb-2">Login to AsQue</h1>
-              <p className="text-slate-400">Enter your phone number to sign in</p>
+              <p className="text-slate-400">Enter your phone number to sign in to AsQue</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -194,7 +193,7 @@ export default function PhoneLogin({ onSuccess, redirectTo = "/my-bots" }: Phone
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="Phone Number"
+                  placeholder="+911234567890"
                   className="w-full h-16 px-6 pr-20 bg-slate-800/50 border border-slate-700 text-white placeholder-slate-400 text-lg rounded-2xl focus:border-slate-600 focus:ring-0 focus:ring-offset-0 backdrop-blur-sm transition-all duration-300 focus:bg-slate-800/70"
                   disabled={loading}
                   autoFocus
@@ -216,11 +215,9 @@ export default function PhoneLogin({ onSuccess, redirectTo = "/my-bots" }: Phone
                     className="h-12 w-12 rounded-full bg-slate-700 hover:bg-slate-600 border-0 p-0 disabled:opacity-50 transition-all duration-300"
                   >
                     {loading ? (
-                      <motion.div
-                        className="rounded-full h-5 w-5 border-2 border-white border-t-transparent"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      />
+                      <div className="w-5 h-5 relative">
+                        <div className="absolute inset-0 rounded-full border-2 border-t-white border-transparent animate-spin"></div>
+                      </div>
                     ) : (
                       <ArrowRight className="h-5 w-5 text-white" />
                     )}
@@ -289,11 +286,9 @@ export default function PhoneLogin({ onSuccess, redirectTo = "/my-bots" }: Phone
                     className="h-12 w-12 rounded-full bg-slate-700 hover:bg-slate-600 border-0 p-0 disabled:opacity-50 transition-all duration-300"
                   >
                     {loading ? (
-                      <motion.div
-                        className="rounded-full h-5 w-5 border-2 border-white border-t-transparent"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      />
+                      <div className="w-5 h-5 relative">
+                        <div className="absolute inset-0 rounded-full border-2 border-t-white border-transparent animate-spin"></div>
+                      </div>
                     ) : (
                       <ArrowRight className="h-5 w-5 text-white" />
                     )}

@@ -3,9 +3,8 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import PhoneLogin from '@/components/auth/PhoneLogin';
 import SEO from '@/components/ui/SEO';
-import Header from '@/components/layout/Header';
 import { motion } from 'framer-motion';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,7 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && !loginSuccess) {
-      const redirectTo = typeof redirect === 'string' ? redirect : '/my-bots';
+      const redirectTo = typeof redirect === 'string' ? redirect : '/';
       router.push(redirectTo);
     }
   }, [isAuthenticated, loading, router, redirect, loginSuccess]);
@@ -24,7 +23,7 @@ export default function LoginPage() {
     setLoginSuccess(true);
     // Show success animation for 2 seconds, then redirect
     setTimeout(() => {
-      const redirectTo = typeof redirect === 'string' ? redirect : '/my-bots';
+      const redirectTo = typeof redirect === 'string' ? redirect : '/';
       router.push(redirectTo);
     }, 2000);
   };
@@ -37,7 +36,25 @@ export default function LoginPage() {
           title="Login"
           description="Sign in to AsQue to create and manage your AI chatbots"
         />
-        <Header />
+        {/* Custom Header with Centered Logo */}
+        <nav className="fixed top-0 w-full z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
+              <button
+                onClick={() => router.push('/')}
+                className="text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 p-2 rounded-full"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <img 
+                src="/AsQue Logo NoBG.png" 
+                alt="AsQue Logo" 
+                className="w-8 h-8 object-contain"
+              />
+              <div className="w-10"></div>
+            </div>
+          </div>
+        </nav>
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -65,7 +82,25 @@ export default function LoginPage() {
           title="Login Successful"
           description="Successfully logged in to AsQue"
         />
-        <Header />
+        {/* Custom Header with Centered Logo */}
+        <nav className="fixed top-0 w-full z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
+              <button
+                onClick={() => router.push('/')}
+                className="text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 p-2 rounded-full"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <img 
+                src="/AsQue Logo NoBG.png" 
+                alt="AsQue Logo" 
+                className="w-8 h-8 object-contain"
+              />
+              <div className="w-10"></div>
+            </div>
+          </div>
+        </nav>
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -104,7 +139,7 @@ export default function LoginPage() {
   }
 
   // Login form state
-  const redirectTo = typeof redirect === 'string' ? redirect : '/my-bots';
+  const redirectTo = typeof redirect === 'string' ? redirect : '/';
 
   return (
     <>
@@ -112,7 +147,25 @@ export default function LoginPage() {
         title="Login"
         description="Sign in to AsQue to create and manage your AI chatbots"
       />
-      <Header />
+      {/* Custom Header with Centered Logo */}
+      <nav className="fixed top-0 w-full z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            <button
+              onClick={() => router.push('/')}
+              className="text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 p-2 rounded-full"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <img 
+              src="/AsQue Logo NoBG.png" 
+              alt="AsQue Logo" 
+              className="w-8 h-8 object-contain"
+            />
+            <div className="w-10"></div>
+          </div>
+        </div>
+      </nav>
       <PhoneLogin 
         redirectTo={redirectTo}
         onSuccess={handleLoginSuccess}
