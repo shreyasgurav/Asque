@@ -207,18 +207,14 @@ export default function MyBotsPage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
           {/* My Bots Title */}
           <div className="pt-24 pb-8 text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-wide drop-shadow" style={{fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 800}}>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-wide drop-shadow mb-2" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
               My Bots
             </h1>
           </div>
 
           {/* Content */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="mb-8">
-              <p className="mt-2 text-slate-400">
-                Manage your chatbots and share them with others
-              </p>
-            </div>
+            <div className="mb-8"></div>
 
             {/* Loading State */}
             {loading && (
@@ -254,8 +250,7 @@ export default function MyBotsPage() {
             {/* Empty State */}
             {!loading && !error && bots.length === 0 && (
               <div className="text-center py-12">
-                <div className="text-6xl mb-4">🤖</div>
-                <h3 className="text-lg font-medium text-white mb-2">No bots yet</h3>
+                <h3 className="text-2xl font-semibold text-white mb-2">No bots yet</h3>
                 <p className="text-slate-400 mb-6">
                   Create your first chatbot to get started. It only takes a minute!
                 </p>

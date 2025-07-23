@@ -9,6 +9,7 @@ import { motion } from "framer-motion"
 import { useAuth } from '@/components/auth/AuthContext';
 import { signOut } from '@/lib/auth';
 import Header from "@/components/layout/Header";
+import SEO from "@/components/ui/SEO";
 
 export default function Contact() {
   const router = useRouter()
@@ -83,6 +84,12 @@ export default function Contact() {
 
   return (
     <>
+      <SEO
+        title="Contact AsQue - AI Chatbot Platform"
+        description="Contact AsQue, the AI chatbot platform that lets you create smart chatbots by simply chatting. Reach out to us for support, questions, or partnership opportunities. Visit asque.app to learn more about AsQue."
+        keywords={["AsQue", "AI chatbot", "chatbot platform", "asque.app", "contact AsQue", "support", "AI assistant"]}
+        ogUrl="https://asque.app/contact"
+      />
       <Header />
       <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
         {/* Interactive Background */}
@@ -178,7 +185,7 @@ export default function Contact() {
                         </div>
                         <div className="text-left">
                           <h3 className="text-xs sm:text-sm text-gray-400 mb-1">{method.title}</h3>
-                          <p className="text-sm sm:text-base md:text-lg font-semibold text-white mb-1 sm:mb-2 transition-all duration-300 group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-200 group-hover:bg-clip-text group-hover:text-transparent">
+                          <p className="text-sm sm:text-base md:text-lg font-semibold text-white mb-1 sm:mb-2 transition-all duration-300 group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-200 group-hover:bg-clip-text group-hover:text-transparent break-words">
                             {method.value}
                           </p>
                           <p className="text-xs sm:text-sm text-gray-500">{method.description}</p>

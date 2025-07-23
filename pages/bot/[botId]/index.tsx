@@ -173,7 +173,7 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
                 className={`flex gap-4 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.type === 'bot' && (
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="w-8 h-8 bg-gradient-to-br from-slate-700 to-slate-900 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {bot.profilePictureUrl ? (
                       <img
                         src={bot.profilePictureUrl}
@@ -203,7 +203,7 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
                 </div>
 
                 {message.type === 'user' && (
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-slate-700 to-slate-900">
                     <User size={16} className="text-white" />
                   </div>
                 )}
@@ -213,7 +213,7 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
             {isTyping && (
               <div className="flex justify-start">
                 <div className="flex items-start gap-3 max-w-[80%]">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="w-8 h-8 bg-gradient-to-br from-slate-700 to-slate-900 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {bot.profilePictureUrl ? (
                       <img
                         src={bot.profilePictureUrl}

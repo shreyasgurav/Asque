@@ -55,7 +55,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ leftElement, botName }) => {
             {isAuthenticated ? (
               <div className="relative" ref={dropdownRef}>
                 <div
-                  className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 bg-gradient-to-br from-slate-700 to-slate-900 rounded-full flex items-center justify-center cursor-pointer"
                   onClick={() => setDropdownOpen((v) => !v)}
                   onMouseEnter={() => setDropdownOpen(true)}
                 >

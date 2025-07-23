@@ -949,8 +949,11 @@ export default function BotDashboard() {
                 {/* Unanswered Questions Tab Content */}
                 {activeTab === 'unanswered' && (
                   <div className="space-y-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="text-lg font-semibold text-white">Unanswered Questions</h3>
+                      <span className="px-2 py-0.5 text-xs rounded bg-yellow-400 text-yellow-900 font-bold uppercase tracking-wide">Beta</span>
+                    </div>
                     <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/50 p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4">Unanswered Questions</h3>
                       <p className="text-slate-400 mb-6">
                         These are questions that your bot couldn't answer. Respond to them to improve your bot's knowledge.
                       </p>

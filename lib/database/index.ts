@@ -193,16 +193,42 @@ export const serverDb = {
     return bots;
   },
 
-  // Delete bot
+  // Delete bot and all related data
   async deleteBot(botId: string): Promise<boolean> {
     if (!adminDb) {
       throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
     try {
+      // Delete all chat sessions for this bot
+      const chatSessions = await this.getChatSessionsByBot(botId);
+      for (const session of chatSessions) {
+        await adminDb.collection('chatSessions').doc(session.id).delete();
+      }
+
+      // Delete all unanswered questions for this bot
+      const unansweredQuestionsSnap = await adminDb
+        .collection('unansweredQuestions')
+        .where('botId', '==', botId)
+        .get();
+      for (const doc of unansweredQuestionsSnap.docs) {
+        await adminDb.collection('unansweredQuestions').doc(doc.id).delete();
+      }
+
+      // Delete all training entries for this bot
+      const trainingEntriesSnap = await adminDb
+        .collection('bots')
+        .doc(botId)
+        .collection('trainingMessages')
+        .get();
+      for (const doc of trainingEntriesSnap.docs) {
+        await adminDb.collection('bots').doc(botId).collection('trainingMessages').doc(doc.id).delete();
+      }
+
+      // Delete the bot itself
       await adminDb.collection('bots').doc(botId).delete();
       return true;
     } catch (error) {
-      console.error('Error deleting bot from Firebase:', error);
+      console.error('Error deleting bot and related data from Firebase:', error);
       return false;
     }
   },
