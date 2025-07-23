@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthContext';
 import { signOut } from '@/lib/auth';
 import React, { useRef, useState } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, ArrowLeft, User } from 'lucide-react';
 
 export default function Header({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
   const router = useRouter();
@@ -19,11 +19,11 @@ export default function Header({ onToggleSidebar }: { onToggleSidebar?: () => vo
         setDropdownOpen(false);
       }
     }
+    
     if (dropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
     }
+    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -38,86 +38,90 @@ export default function Header({ onToggleSidebar }: { onToggleSidebar?: () => vo
   };
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800/50">
+    <nav className="fixed top-0 w-full z-50 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
-          <div className="flex items-center gap-2">
-            {/* Sidebar toggle button for chat pages */}
-            {onToggleSidebar && (
-              <button
-                onClick={onToggleSidebar}
-                className="p-2 rounded-full text-slate-400 hover:bg-slate-800 hover:text-white transition-colors mr-2"
-                aria-label="Toggle sidebar"
+        <div className="flex items-center justify-between py-4">
+          <button
+            onClick={() => router.push('/')}
+            className="text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 p-2 rounded-full"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <img 
+            src="/AsQue Logo NoBG.png" 
+            alt="AsQue Logo" 
+            className="w-8 h-8 object-contain"
+          />
+          {isAuthenticated ? (
+            <div className="relative" ref={dropdownRef}>
+              <div
+                className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center cursor-pointer"
+                onClick={() => setDropdownOpen((v) => !v)}
+                onMouseEnter={() => setDropdownOpen(true)}
               >
-                <Menu size={22} />
-              </button>
-            )}
-            <button
-              onClick={() => router.push('/')}
-              className="flex items-center focus:outline-none group"
-              aria-label="Go to home page"
-              style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
-            >
-              <div className="relative">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-                  <img 
-                    src="/AsQue Logo NoBG.png" 
-                    alt="AsQue Logo" 
-                    className="w-full h-full object-contain"
-                  />
-                </div>
+                <User size={18} className="text-white" />
               </div>
-            </button>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setDropdownOpen((v) => !v)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              {dropdownOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-50 animate-fade-in"
+                  onMouseLeave={() => setDropdownOpen(false)}
                 >
-                  <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold text-sm">
-                    {user?.displayName?.[0] || user?.phoneNumber?.slice(-2) || '?'}
+                  <div className="px-4 py-3 border-b border-slate-800 text-xs text-slate-400 font-semibold">
+                    {user?.phoneNumber ? user.phoneNumber : 'No phone'}
                   </div>
-                  <span className="hidden sm:inline text-sm font-medium">
-                    {user?.displayName || user?.phoneNumber || 'User'}
-                  </span>
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50 animate-fade-in">
-                    <button
-                      onClick={() => { router.push('/my-bots'); setDropdownOpen(false); }}
-                      className="block w-full text-left px-4 py-2 text-slate-200 hover:bg-slate-700"
-                >
-                  My Bots
-                </button>
-                                  <button
-                      onClick={() => { router.push('/create'); setDropdownOpen(false); }}
-                      className="block w-full text-left px-4 py-2 text-slate-200 hover:bg-slate-700"
+                  <button
+                    className="block w-full text-left px-4 py-3 text-slate-200 hover:bg-slate-800 text-sm"
+                    onClick={() => { router.push('/my-bots'); setDropdownOpen(false); }}
+                  >
+                    My Bots
+                  </button>
+                  <button
+                    className="block w-full text-left px-4 py-3 text-slate-200 hover:bg-slate-800 text-sm"
+                    onClick={() => { router.push('/create'); setDropdownOpen(false); }}
                   >
                     Create Bot
                   </button>
-                    <div className="border-t border-slate-700 my-1" />
-                <button
-                      onClick={() => { handleSignOut(); setDropdownOpen(false); }}
-                      className="block w-full text-left px-4 py-2 text-red-400 hover:bg-slate-700"
-                >
-                  Sign Out
-                </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-                <button
-                  onClick={() => router.push('/login')}
-                  className="text-slate-300 hover:text-white transition-colors px-3 py-2 rounded-md"
-                >
-                  Sign In
-                </button>
-            )}
-          </div>
+                  <div className="border-t border-slate-800 my-1" />
+                  <button
+                    className="block w-full text-left px-4 py-3 text-red-400 hover:bg-slate-800 text-sm"
+                    onClick={() => { signOut(); setDropdownOpen(false); }}
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push('/login')}
+              className="ml-2 signInButton signInButtonSmall"
+            >
+              Sign In
+            </button>
+          )}
+          <style jsx>{`
+            .signInButton {
+              background: rgba(255, 255, 255, 0.1);
+              border: 0px solid rgba(255, 255, 255, 0.1);
+              border-radius: 15px;
+              padding: 7px 14px;
+              color: rgba(255, 255, 255, 0.8);
+              font-size: 13px;
+              font-weight: 500;
+              cursor: pointer;
+              transition: all 0.3s ease;
+              backdrop-filter: blur(4px);
+            }
+            .signInButtonSmall {
+              padding: 3px 8px;
+              font-size: 11px;
+            }
+            .signInButton:hover {
+              background: rgba(255, 255, 255, 0.8);
+              border-color: rgba(255, 255, 255, 0.3);
+              color: black;
+            }
+          `}</style>
         </div>
       </div>
     </nav>

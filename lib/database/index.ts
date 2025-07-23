@@ -367,5 +367,68 @@ export const serverDb = {
       console.error('Error fetching unanswered question from Firebase:', error);
       return null;
     }
+  },
+
+  // New Training Data Storage Functions
+  async saveTrainingEntry(botId: string, trainingEntry: any): Promise<void> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
+    }
+    try {
+      await adminDb
+        .collection('bots')
+        .doc(botId)
+        .collection('trainingMessages')
+        .doc(trainingEntry.id)
+        .set(trainingEntry);
+      
+      console.log(`✅ Saved training entry ${trainingEntry.id} for bot ${botId}`);
+    } catch (error) {
+      console.error('Error saving training entry to Firebase:', error);
+      throw error;
+    }
+  },
+
+  async getTrainingEntries(botId: string): Promise<any[]> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
+    }
+    try {
+      const querySnapshot = await adminDb
+        .collection('bots')
+        .doc(botId)
+        .collection('trainingMessages')
+        .get();
+      
+      const entries: any[] = [];
+      querySnapshot.forEach((doc: any) => {
+        entries.push({ id: doc.id, ...doc.data() });
+      });
+      
+      return entries;
+    } catch (error) {
+      console.error('Error fetching training entries from Firebase:', error);
+      return [];
+    }
+  },
+
+  async deleteTrainingEntry(botId: string, entryId: string): Promise<boolean> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
+    }
+    try {
+      await adminDb
+        .collection('bots')
+        .doc(botId)
+        .collection('trainingMessages')
+        .doc(entryId)
+        .delete();
+      
+      console.log(`✅ Deleted training entry ${entryId} for bot ${botId}`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting training entry from Firebase:', error);
+      return false;
+    }
   }
 }; 

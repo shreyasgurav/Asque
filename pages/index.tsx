@@ -6,9 +6,11 @@ import { nanoid } from 'nanoid';
 import { useAuth } from '@/components/auth/AuthContext';
 import { authenticatedFetch } from '@/lib/auth';
 import Layout from '@/components/layout/Layout';
-import { User, Send } from 'lucide-react';
+import { User, Send, Menu } from 'lucide-react';
 import { Bot, UserChatSummary } from '@/types';
 import { ChevronLeft } from 'lucide-react';
+import ChatSidebar from "@/components/chat/ChatSidebar";
+import ChatHeader from "@/components/layout/ChatHeader";
 
 // Custom 2-line menu icon
 const TwoLineMenuIcon = ({ size = 20, color = 'currentColor' }) => (
@@ -42,92 +44,6 @@ function formatTime(date: Date | string) {
     return 'Just now';
   }
 }
-
-const ChatSidebar = ({
-  isOpen,
-  onToggle,
-  onSelectChat,
-  onStartNewChat,
-  pastChats,
-  loadingChats,
-  currentSessionId,
-  currentBotId,
-  isAuthenticated,
-  formatLastMessage,
-  formatTime,
-  sidebarRef,
-}: any) => {
-  return (
-    <>
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={onToggle}
-        />
-      )}
-      <div
-        ref={sidebarRef}
-        className={`bg-slate-900 fixed lg:relative h-full border-r border-white/10 transition-all duration-300 ease-in-out z-50 flex flex-col ${isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full lg:w-16 lg:translate-x-0'} ${!isOpen && 'lg:overflow-hidden'}`}
-      >
-        <div className="flex flex-col h-full">
-          <div className="p-3">
-            <div className="flex items-center">
-              <button
-                onClick={onToggle}
-                className="p-2 rounded-full text-[var(--sidebar-toggle-text)] hover:bg-[var(--sidebar-toggle-hover-bg)] hover:text-white transition-colors"
-                aria-label="Toggle sidebar"
-              >
-                {isOpen ? <ChevronLeft size={20} /> : <TwoLineMenuIcon size={20} />}
-              </button>
-              {isOpen && (
-                <h2 className="ml-3 text-lg font-semibold text-[var(--sidebar-header-text)]">Chat History</h2>
-              )}
-            </div>
-                          </div>
-          {isOpen && (
-            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
-              {loadingChats ? (
-                <div className="text-center py-8">
-                  <div className="w-7 h-7 border-2 border-[var(--spinner-color-light)] border-t-[var(--spinner-color-dark)] rounded-full animate-spin mx-auto mb-2"></div>
-                  <p className="text-[var(--sidebar-toggle-text)] text-sm">Loading chats...</p>
-                        </div>
-              ) : pastChats.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-[var(--sidebar-time-text)] text-sm">No recent chats.</p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {pastChats.map((chat: any) => (
-                    <button
-                      key={chat.sessionId}
-                      onClick={() => onSelectChat(chat.sessionId, chat.botId)}
-                      className={`w-full text-left p-3 rounded-lg cursor-pointer transition-colors text-sm ${chat.sessionId === currentSessionId && chat.botId === currentBotId ? 'bg-[var(--sidebar-selected-bg)] text-[var(--sidebar-selected-text)]' : 'bg-[var(--sidebar-bg-default)] hover:bg-[var(--sidebar-hover-bg)] text-[var(--sidebar-text-default)]'} flex items-center gap-3 hover:bg-slate-700/60`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{chat.botName}</p>
-                        <p className="text-xs text-[var(--sidebar-toggle-text)] truncate">{formatLastMessage(chat.lastMessage)}</p>
-                      </div>
-                    </button>
-                  ))}
-                      </div>
-              )}
-                      </div>
-          )}
-                    </div>
-        {/* Sidebar Bottom Section */}
-        {isOpen && (
-          <div className="p-4 mt-auto text-xs text-[var(--sidebar-time-text)] border-t border-white/10">
-            <a href="/about" className="block mb-1 opacity-70 hover:opacity-100 transition-opacity">About</a>
-            <a href="/contact" className="block mb-1 opacity-70 hover:opacity-100 transition-opacity">Contact</a>
-            <a href="https://www.linkedin.com/in/shreyasdgurav/" target="_blank" rel="noopener noreferrer" className="block opacity-80 hover:opacity-100 transition-opacity">
-              By <span className="text-blue-500 font-semibold">Shreyas Gurav</span>
-            </a>
-                        </div>
-        )}
-                      </div>
-    </>
-  );
-};
 
 // Add UserDropdown component for the user icon dropdown in the header
 const UserDropdown: React.FC<{ user: any }> = ({ user }) => {
@@ -265,12 +181,19 @@ export default function LandingChatPage() {
     setInputMessage('');
   };
 
+  const handleSidebarToggle = () => {
+    setIsSidebarOpen((prev) => !prev);
+  };
+
+  // Remove sidebarToggleButton and do not pass leftElement to ChatHeader
   return (
     <Layout showHeader={false} showFooter={false}>
-      <div className="flex h-screen bg-[var(--background)] text-[var(--foreground)]">
+      <div className="flex h-screen bg-[var(--background)] text-[var(--foreground)] overflow-hidden">
+        {/* Sticky Header */}
+        <ChatHeader />
         <ChatSidebar
           isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen((v: boolean) => !v)}
+          onToggle={handleSidebarToggle}
           onSelectChat={handleSelectChat}
           onStartNewChat={() => {}}
           pastChats={pastChats}
@@ -282,99 +205,41 @@ export default function LandingChatPage() {
           formatTime={formatTime}
           sidebarRef={sidebarRef}
         />
-        <div className="flex-1 flex flex-col h-screen bg-[var(--background)]">
-          {/* Header with centered logo and user icon or sign in button */}
-          <div className="relative flex items-center justify-between p-4 bg-[var(--background)]">
-            <div className="w-8 h-8"></div>
-            <img 
-              src="/AsQue Logo NoBG.png" 
-              alt="AsQue Logo" 
-              className="w-8 h-8 object-contain"
-            />
-            {isAuthenticated ? (
-              <UserDropdown user={user} />
+        <div className="flex-1 flex flex-col h-screen bg-[var(--background)] min-w-0">
+          {/* Main chat area: only this should scroll */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto px-2 sm:px-4 pb-2">
+            {!selectedSessionId ? (
+              !isAuthenticated ? (
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  <p className="text-sm text-[var(--muted-foreground)] text-center mb-4 font-medium leading-snug whitespace-nowrap" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
+                    Sign in to save your chats and continue conversations.
+                  </p>
+                  <button
+                    onClick={() => router.push('/login')}
+                    className="signInButton"
+                    style={{ minWidth: 44, minHeight: 32 }}
+                  >
+                    Sign In
+                  </button>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  <button 
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="text-sm text-slate-400 text-center opacity-70 hover:opacity-100 hover:text-slate-300 transition-all duration-200 cursor-pointer"
+                    style={{ minWidth: 44, minHeight: 32 }}
+                  >
+                    Select a chat to continue
+                  </button>
+                </div>
+              )
             ) : (
-              <button
-                onClick={() => router.push('/login')}
-                className="signInButton signInButtonSmall"
-              >
-                Sign In
-              </button>
+              <div className="flex-1" />
             )}
-            <style jsx>{`
-              .signInButton {
-                background: rgba(255, 255, 255, 0.1);
-                border: 0px solid rgba(255, 255, 255, 0.1);
-                border-radius: 15px;
-                padding: 7px 14px;
-                color: rgba(255, 255, 255, 0.8);
-                font-size: 13px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                backdrop-filter: blur(4px);
-              }
-              .signInButtonSmall {
-                padding: 3px 8px;
-                font-size: 11px;
-              }
-              .signInButton:hover {
-                background: rgba(255, 255, 255, 0.8);
-                border-color: rgba(255, 255, 255, 0.3);
-                color: black;
-              }
-            `}</style>
           </div>
-          {/* Main area: text if no chat selected, or sign-in prompt if not logged in */}
-          {!selectedSessionId ? (
-            !isAuthenticated ? (
-              <div className="flex-1 flex flex-col items-center justify-center">
-                <p className="text-sm text-[var(--muted-foreground)] text-center mb-4 font-medium leading-snug whitespace-nowrap" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
-                  Sign in to save your chats and continue conversations.
-                </p>
-                <button
-                  onClick={() => router.push('/login')}
-                  className="signInButton"
-                >
-                  Sign In
-                </button>
-                <style jsx>{`
-                  .signInButton {
-                    background: rgba(255, 255, 255, 0.1);
-                    border: 0px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 15px;
-                    padding: 7px 14px;
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    backdrop-filter: blur(4px);
-                  }
-                  .signInButton:hover {
-                    background: rgba(255, 255, 255, 0.8);
-                    border-color: rgba(255, 255, 255, 0.3);
-                    color: black;
-                  }
-                `}</style>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center">
-                <button 
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="text-sm text-slate-400 text-center opacity-70 hover:opacity-100 hover:text-slate-300 transition-all duration-200 cursor-pointer"
-                >
-                  Select a chat to continue
-                </button>
-              </div>
-            )
-          ) : (
-            <div className="flex-1" />
-          )}
-
-          {/* Input Area - Fixed at Bottom */}
+          {/* Sticky Input Area */}
           {selectedSessionId && (
-            <div className="sticky bottom-0 bg-[var(--background)] p-4 w-full">
+            <div className="sticky bottom-0 z-20 bg-[var(--background)] p-4 w-full border-t border-white/10">
               <div className="max-w-3xl mx-auto">
                 <form onSubmit={sendMessage} className="relative bg-[var(--input-background)] rounded-2xl border border-white/10 p-2 shadow-xl">
                   <div className="flex items-end gap-3">
@@ -387,8 +252,9 @@ export default function LandingChatPage() {
                       className="flex-1 bg-transparent resize-none border-0 outline-none min-h-[40px] max-h-32 py-2 px-2 text-[var(--foreground)] placeholder:text-[var(--placeholder-foreground)] text-base leading-tight overflow-y-hidden focus:outline-none focus:ring-0 placeholder:opacity-50"
                       rows={1}
                       disabled={isTyping || !isAuthenticated}
+                      style={{ minWidth: 0 }}
                     />
-                    <div className="pb-0"> {/* Adjusted padding to match original button alignment */}
+                    <div className="pb-0">
                       <button
                         type="submit"
                         disabled={!inputMessage.trim() || isTyping || !isAuthenticated}
@@ -398,6 +264,7 @@ export default function LandingChatPage() {
                             : 'bg-[var(--muted)] text-[var(--muted-foreground)] cursor-not-allowed opacity-40'
                         }`}
                         aria-label="Send message"
+                        style={{ minWidth: 44, minHeight: 44 }}
                       >
                         {isTyping ? (
                           <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
@@ -406,12 +273,12 @@ export default function LandingChatPage() {
                         )}
                       </button>
                     </div>
-                </div>
+                  </div>
                 </form>
                 <div className="text-center text-xs text-[var(--muted-foreground)] mt-2">
                   AsQue can make mistakes. Consider checking important information.
                 </div>
-                </div>
+              </div>
             </div>
           )}
         </div>

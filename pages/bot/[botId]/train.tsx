@@ -12,6 +12,7 @@ import { useAuth } from '@/components/auth/AuthContext'
 import { authenticatedFetch } from '@/lib/auth'
 import SEO from '@/components/ui/SEO'
 import Loading from '@/components/ui/Loading'
+import TypingIndicator from '@/components/ui/TypingIndicator'
 import Layout from '@/components/layout/Layout';
 
 interface TrainingMessage {
@@ -45,6 +46,7 @@ interface ApiResponse {
   data?: Bot
   error?: string
   botResponse?: string
+  savedCount?: number
 }
 
 export default function TrainBotPage() {
@@ -62,6 +64,9 @@ export default function TrainBotPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [welcomeMessage, setWelcomeMessage] = useState("")
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
+  const [trainingEntries, setTrainingEntries] = useState<any[]>([])
+  const [loadingEntries, setLoadingEntries] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -108,6 +113,33 @@ export default function TrainBotPage() {
     }
   }, [botId, user, authLoading, bot, fetchBot])
 
+  // Fetch training entries when bot is loaded
+  useEffect(() => {
+    if (bot && bot.id) {
+      fetchTrainingEntries()
+    }
+  }, [bot])
+
+  const fetchTrainingEntries = async () => {
+    if (!bot) return
+    
+    setLoadingEntries(true)
+    try {
+      const response = await authenticatedFetch(`/api/bots/${bot.id}/training-entries`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setTrainingEntries(result.data || [])
+      } else {
+        console.error('Failed to fetch training entries:', result.error)
+      }
+    } catch (err) {
+      console.error('Error fetching training entries:', err)
+    } finally {
+      setLoadingEntries(false)
+    }
+  }
+
   useEffect(() => {
     scrollToBottom()
   }, [bot?.trainingMessages])
@@ -140,13 +172,24 @@ export default function TrainBotPage() {
       const result = await response.json() as ApiResponse
 
       if (result.success) {
-        setBot(result.data || bot)
+        // Show success message with saved count
+        if (result.savedCount && result.savedCount > 0) {
+          setError(null) // Clear any previous errors
+          setSuccessMessage(`✅ Successfully saved ${result.savedCount} training entries!`)
+          
+          // Clear success message after 5 seconds
+          setTimeout(() => setSuccessMessage(null), 5000)
+          
+          // Refresh training entries to show the new ones
+          await fetchTrainingEntries()
+        }
         
-        if (result.botResponse && result.data) {
-          const newMessage = result.data.trainingMessages[result.data.trainingMessages.length - 1];
+        if (result.botResponse) {
+          // Store the bot response for display
+          const responseId = `response_${Date.now()}`;
           setBotResponses((prev) => ({
             ...prev,
-            [newMessage.id]: result.botResponse!,
+            [responseId]: result.botResponse!,
           }))
         }
 
@@ -158,6 +201,7 @@ export default function TrainBotPage() {
         setError(result.error || "Failed to save training message")
       }
     } catch (err) {
+      console.error("Training error:", err)
       setError("Failed to save training message")
     } finally {
       setIsSubmitting(false)
@@ -219,30 +263,25 @@ export default function TrainBotPage() {
     }
   }
 
-  const deleteTrainingMessage = async (messageId: string) => {
+  const deleteTrainingMessage = async (entryId: string) => {
     if (!bot) return
 
     try {
-      const response = await authenticatedFetch(`/api/bots/${bot.id}/training/${messageId}`, {
+      const response = await authenticatedFetch(`/api/bots/${bot.id}/training-entries/${entryId}`, {
         method: "DELETE",
       })
 
       const result = await response.json() as ApiResponse
 
       if (result.success) {
-        setBot(result.data || bot)
-        
-        // Remove bot response for deleted message
-        setBotResponses((prev) => {
-          const newResponses = { ...prev }
-          delete newResponses[messageId]
-          return newResponses
-        })
+        // Refresh training entries after deletion
+        await fetchTrainingEntries()
+        setError(null)
       } else {
-        setError(result.error || "Failed to delete message")
+        setError(result.error || "Failed to delete training entry")
       }
     } catch (err) {
-      setError("Failed to delete message")
+      setError("Failed to delete training entry")
     }
   }
 
@@ -348,12 +387,12 @@ export default function TrainBotPage() {
                       )}
                       Memory Bank
                       <Badge variant="secondary" className="ml-2 bg-slate-600/50 text-slate-300">
-                        {bot.trainingMessages.length}
+                        {loadingEntries ? '...' : trainingEntries.length}
                       </Badge>
                     </Button>
                     <Button
                       onClick={handleDeployBot}
-                      disabled={bot.trainingMessages.length === 0 || isDeploying}
+                      disabled={trainingEntries.length === 0 || isDeploying}
                       className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-green-500/25"
                     >
                       {isDeploying ? (
@@ -378,6 +417,19 @@ export default function TrainBotPage() {
             {/* Chat Area - Scrollable */}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
               <div className="max-w-4xl mx-auto p-4 space-y-6">
+                {/* Success Message */}
+                {successMessage && (
+                  <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 text-green-400 text-center">
+                    {successMessage}
+                  </div>
+                )}
+                
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4 text-red-400 text-center">
+                    {error}
+                  </div>
+                )}
                 {/* Enhanced Welcome Message */}
                 <div className="flex items-start gap-4">
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden">
@@ -428,25 +480,11 @@ export default function TrainBotPage() {
                   </div>
                 </div>
 
-                {/* Training Messages */}
-                {bot.trainingMessages.map((message, index) => (
-                  <div key={message.id} className="space-y-4">
-                    {/* User Message */}
-                    <div className="flex gap-4 justify-end">
-                      <div className="max-w-[80%] p-4 rounded-2xl shadow-md bg-blue-600 text-white rounded-2xl shadow-md ml-12">
-                        <div className="whitespace-pre-wrap break-words">
-                          {message.content}
-                        </div>
-                      </div>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Bot Response */}
-                    {botResponses[message.id] && (
+                {/* Training Conversation Messages */}
+                {Object.keys(botResponses).length > 0 ? (
+                  Object.entries(botResponses).map(([responseId, response]) => (
+                    <div key={responseId} className="space-y-4">
+                      {/* Bot Response */}
                       <div className="flex gap-4 justify-start">
                         <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {bot.profilePictureUrl ? (
@@ -465,13 +503,25 @@ export default function TrainBotPage() {
                         </div>
                         <div className="bg-slate-800/80 text-slate-200 rounded-2xl shadow-md mr-12">
                           <div className="whitespace-pre-wrap break-words p-4">
-                            {botResponses[message.id]}
+                            {response}
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-slate-400 py-8">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <p className="text-slate-500 font-medium">Ready to train your bot!</p>
+                      <p className="text-slate-600 text-sm mt-1">Add training content below and see responses here</p>
+                    </div>
                   </div>
-                ))}
+                )}
 
                 {/* Typing Indicator */}
                 {isTyping && (
@@ -493,11 +543,7 @@ export default function TrainBotPage() {
                         )}
                       </div>
                       <div className="bg-[var(--muted)] text-[var(--muted-foreground)] p-3 rounded-xl rounded-bl-none">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-[var(--muted-foreground)] rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-[var(--muted-foreground)] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-2 h-2 bg-[var(--muted-foreground)] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        </div>
+                        <TypingIndicator />
                       </div>
                     </div>
                   </div>
@@ -563,12 +609,19 @@ export default function TrainBotPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-white">Memory Bank</h3>
-                    <p className="text-sm text-slate-400">{bot.trainingMessages.length} knowledge entries</p>
+                    <p className="text-sm text-slate-400">
+                      {loadingEntries ? 'Loading...' : `${trainingEntries.length} knowledge entries`}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto space-y-4">
-                  {bot.trainingMessages.length === 0 ? (
+                  {loadingEntries ? (
+                    <Card className="bg-slate-800/30 backdrop-blur-sm border-slate-700/50 p-6 text-center">
+                      <div className="w-8 h-8 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-slate-400 text-sm">Loading training entries...</p>
+                    </Card>
+                  ) : trainingEntries.length === 0 ? (
                     <Card className="bg-slate-800/30 backdrop-blur-sm border-slate-700/50 p-6 text-center">
                       <div className="w-12 h-12 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -579,25 +632,38 @@ export default function TrainBotPage() {
                       <p className="text-slate-500 text-xs">Start chatting to build your AI's knowledge base!</p>
                     </Card>
                   ) : (
-                    bot.trainingMessages.map((message) => (
+                    trainingEntries.map((entry) => (
                       <Card
-                        key={message.id}
+                        key={entry.id}
                         className="bg-slate-800/30 backdrop-blur-sm border-slate-700/50 p-4 hover:bg-slate-800/50 transition-all duration-200 group"
                       >
-                        {message.category && (
+                        <div className="mb-3">
                           <Badge
                             variant="secondary"
-                            className="mb-3 bg-purple-600/20 text-purple-300 border-purple-600/30"
+                            className="bg-blue-600/20 text-blue-300 border-blue-600/30"
                           >
-                            {message.category}
+                            {entry.type === 'qa' ? 'Q&A' : 'Context'}
                           </Badge>
+                        </div>
+                        
+                        {entry.type === 'qa' ? (
+                          <div className="space-y-2">
+                            <div className="text-sm text-slate-300">
+                              <span className="font-semibold text-blue-400">Q:</span> {entry.question}
+                            </div>
+                            <div className="text-sm text-slate-400">
+                              <span className="font-semibold text-green-400">A:</span> {entry.answer}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-300 line-clamp-3 leading-relaxed">
+                            {entry.contextBlock}
+                          </p>
                         )}
-                        <p className="text-sm text-slate-300 line-clamp-3 mb-3 leading-relaxed">
-                          {message.summary || message.content}
-                        </p>
-                        {message.keywords && message.keywords.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {message.keywords.slice(0, 3).map((keyword, idx) => (
+                        
+                        {entry.keywords && entry.keywords.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-3">
+                            {entry.keywords.slice(0, 3).map((keyword: string, idx: number) => (
                               <Badge
                                 key={idx}
                                 variant="outline"
@@ -606,24 +672,25 @@ export default function TrainBotPage() {
                                 {keyword}
                               </Badge>
                             ))}
-                            {message.keywords.length > 3 && (
+                            {entry.keywords.length > 3 && (
                               <Badge
                                 variant="outline"
                                 className="text-xs bg-slate-600/20 text-slate-400 border-slate-600/30"
                               >
-                                +{message.keywords.length - 3}
+                                +{entry.keywords.length - 3}
                               </Badge>
                             )}
                           </div>
                         )}
-                        <div className="flex justify-between items-center">
+                        
+                        <div className="flex justify-between items-center mt-3">
                           <span className="text-xs text-slate-500">
-                            {new Date(message.timestamp).toLocaleDateString()}
+                            {new Date(entry.createdAt).toLocaleDateString()}
                           </span>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => deleteTrainingMessage(message.id)}
+                            onClick={() => deleteTrainingMessage(entry.id)}
                             className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

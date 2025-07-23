@@ -1,24 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAuth } from 'firebase-admin/auth';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  
-  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && privateKey) {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
-      }),
-    });
-    console.log('🔥 Firebase Admin initialized');
-  } else {
-    console.warn('⚠️ Firebase Admin not initialized - missing environment variables');
-  }
-}
+import { getApps } from 'firebase-admin/app';
 
 export interface AuthenticatedUser {
   uid: string;
@@ -30,48 +12,21 @@ export interface AuthenticatedRequest extends NextApiRequest {
   user: AuthenticatedUser;
 }
 
-// Extract auth token from request headers
+// Get auth token from request headers
 const getAuthToken = (req: NextApiRequest): string | null => {
   const authHeader = req.headers.authorization;
-  
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7);
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
   }
-  
-  // Also check for token in cookies (for browser requests)
-  const tokenFromCookie = req.cookies['auth-token'];
-  if (tokenFromCookie) {
-    return tokenFromCookie;
-  }
-  
-  return null;
+  return authHeader.substring(7);
 };
 
 // Verify Firebase auth token and return user info
 export const verifyAuthToken = async (token: string): Promise<AuthenticatedUser> => {
   try {
-    // In development mode, if Firebase is not configured, allow test tokens
-    if (process.env.NODE_ENV === 'development' && !getApps().length) {
-      console.log('🔧 Development mode: Using test authentication');
-      
-      // Allow test tokens for development
-      if (token === 'test-token') {
-        return {
-          uid: 'JxNSv886lwN8CYMdqAityIbtFA43', // Use the existing user ID from mock data
-          email: 'test@example.com',
-          phoneNumber: '+911234567890',
-        };
-      }
-      
-      // Allow any token that starts with 'dev-'
-      if (token.startsWith('dev-')) {
-        const uid = token.replace('dev-', '');
-        return {
-          uid,
-          email: `${uid}@example.com`,
-          phoneNumber: '+911234567890',
-        };
-      }
+    // Check if Firebase Admin is initialized
+    if (getApps().length === 0) {
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
     
     const auth = getAuth();
@@ -138,14 +93,13 @@ export const withAuth = (
   };
 };
 
-// Verify bot ownership (now with phone number fallback)
+// Verify bot ownership
 export const verifyBotOwnership = async (
-  botId: string,
-  userId: string,
+  botId: string, 
+  userId: string, 
   userPhoneNumber?: string
 ): Promise<boolean> => {
   try {
-    // Import here to avoid circular dependency
     const { serverDb } = await import('@/lib/database');
     const bot = await serverDb.getBot(botId);
     
@@ -153,23 +107,19 @@ export const verifyBotOwnership = async (
       return false;
     }
     
-    // Direct ownership check
+    // Check direct ownership
     if (bot.ownerId === userId) {
       return true;
     }
     
-    // Phone number fallback
+    // Check phone number fallback
     if (userPhoneNumber && bot.ownerPhoneNumber === userPhoneNumber) {
-      console.log('✅ Bot ownership verified via phone number fallback');
-      // Update the bot's ownerId for future consistency
-      bot.ownerId = userId;
-      await serverDb.updateBot(bot);
       return true;
     }
     
     return false;
   } catch (error) {
-    console.error('❌ Error verifying bot ownership:', error);
+    console.error('Error verifying bot ownership:', error);
     return false;
   }
 };

@@ -2,6 +2,12 @@ import { NextApiResponse } from 'next';
 import { ApiResponse, RespondToQuestionRequest, RespondToQuestionResponse, TrainingMessage } from '@/types';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth/server';
 import { serverDb } from '@/lib/database';
+import OpenAI from 'openai';
+import { enhanceTrainingMessage } from '@/lib/ai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const handler = async (
   req: AuthenticatedRequest,
@@ -116,29 +122,39 @@ const handler = async (
 
       await serverDb.updateUnansweredQuestion(updatedQuestion);
 
-      // Add the response to the bot's training data
-      const newTrainingMessage: TrainingMessage = {
+      // === NEW LOGIC: Save as training entry like train page ===
+      // 1. Generate embedding for Q&A pair
+      const textToEmbed = `Q: ${question.question}\nA: ${response.trim()}`;
+      const embeddingResponse = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: textToEmbed
+      });
+      const embedding = embeddingResponse.data[0].embedding;
+
+      // 2. Enhance training message (keywords, summary, category)
+      const enhancement = await enhanceTrainingMessage(textToEmbed, bot.name);
+
+      // 3. Build training entry object (match train page structure)
+      const trainingEntry = {
         id: `tm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        content: `Q: ${question.question}\nA: ${response.trim()}`,
+        question: question.question,
+        answer: response.trim(),
+        content: textToEmbed,
         timestamp: new Date(),
         sourceType: 'unanswered_question',
         sourceQuestionId: questionId,
-        keywords: extractKeywords(question.question),
-        summary: `Response to: "${question.question.substring(0, 50)}..."`
+        keywords: enhancement.keywords,
+        summary: enhancement.summary,
+        category: enhancement.category,
+        embedding
       };
 
-      // Update the bot with the new training message
-      const updatedBot = {
-        ...bot,
-        trainingMessages: [...bot.trainingMessages, newTrainingMessage],
-        updatedAt: new Date()
-      };
-
-      await serverDb.updateBot(updatedBot);
+      // 4. Save to trainingMessages subcollection
+      await serverDb.saveTrainingEntry(botId, trainingEntry);
 
       console.log('✅ Creator response recorded for question:', questionId);
       console.log('📝 Response:', response.trim());
-      console.log('🎓 Added to training data with ID:', newTrainingMessage.id);
+      console.log('🎓 Added to training data with ID:', trainingEntry.id);
 
       const responseData = {
         questionId,

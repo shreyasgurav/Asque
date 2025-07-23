@@ -1,242 +1,143 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { nanoid } from 'nanoid';
+import { ChatWithBotRequest, ChatWithBotResponse, Bot, ChatSession, UnansweredQuestion } from '@/types';
 import { serverDb } from '@/lib/database';
-import { Bot, ChatMessage, ApiResponse, ChatSession, UnansweredQuestion } from '@/types';
-import { generateBotResponse } from '@/lib/ai';
 import { verifyAuthToken } from '@/lib/auth/server';
+import { handleChatWithEmbeddings } from '@/lib/ai';
+import { withRateLimit, chatLimiter } from '@/lib/rate-limit';
+import { validateChatMessage, validateBotId, validateSessionId } from '@/lib/validation';
 
-interface ChatRequest {
-  message: string;
-  sessionId?: string;
-}
+// Configuration
+const MIN_CONFIDENCE_THRESHOLD = 0.6;
+const MAX_TRAINING_ENTRIES = 500;
 
-interface ChatResponse extends ApiResponse {
-  data?: {
-    message: string;
-    confidence: number;
-    responseTime: number;
-    sessionId: string;
-    relevantTraining: string[];
-    wasAnswered: boolean;
-  };
-}
+// Basic conversation patterns
+const BASIC_CONVERSATION_PATTERNS = [
+  /^(hi|hello|hey|greetings|good morning|good afternoon|good evening)$/i,
+  /^(how are you|how's it going|how do you do)$/i,
+  /^(thank you|thanks|thx|ty)$/i,
+  /^(bye|goodbye|see you|farewell)$/i,
+  /^(what can you do|help|what do you do|your capabilities)$/i
+];
 
-// Minimum confidence threshold for considering a response as "answered"
-const MIN_CONFIDENCE_THRESHOLD = 0.5;
-
-// Check if message is basic conversation/greeting
 function isBasicConversation(message: string): boolean {
-  const basicPatterns = [
-    'hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening',
-    'how are you', 'how are u', 'what\'s up', 'whats up', 'sup',
-    'who are you', 'who are u', 'what do you do', 'what do u do',
-    'tell me about yourself', 'introduce yourself', 'what can you do',
-    'goodbye', 'bye', 'see you', 'thank you', 'thanks', 'thank u',
-    'nice to meet you', 'pleasure to meet you', 'good night', 'goodnight'
-  ];
-  
-  const normalizedMessage = message.toLowerCase().trim();
-  return basicPatterns.some(pattern => normalizedMessage.includes(pattern));
+  return BASIC_CONVERSATION_PATTERNS.some(pattern => pattern.test(message.trim()));
 }
 
-// Generate context-aware basic conversation response
-function generateBasicConversationResponse(userQuery: string, botName: string, botDescription: string): string {
-  const normalizedQuery = userQuery.toLowerCase().trim();
+// Helper function to generate basic conversation responses
+function generateBasicConversationResponse(message: string, botName: string, botDescription: string): string {
+  const lowerMessage = message.toLowerCase();
   
-  // Greetings
-  if (normalizedQuery.includes('hello') || normalizedQuery.includes('hi') || normalizedQuery.includes('hey')) {
-    return `Hello! I'm ${botName}. ${botDescription || 'I\'m here to help you with any questions you might have.'} How can I assist you today?`;
+  if (/^(hi|hello|hey|greetings)/.test(lowerMessage)) {
+    return `Hello! I'm ${botName}. How can I help you today?`;
   }
   
-  // How are you
-  if (normalizedQuery.includes('how are you') || normalizedQuery.includes('how are u')) {
-    return `I'm doing great, thank you for asking! I'm ${botName} and I'm ready to help you with any questions about our services. What can I help you with today?`;
+  if (/^(how are you|how's it going)/.test(lowerMessage)) {
+    return `I'm doing well, thank you for asking! I'm ${botName} and I'm here to help.`;
   }
   
-  // Who are you / What do you do
-  if (normalizedQuery.includes('who are you') || normalizedQuery.includes('what do you do') || normalizedQuery.includes('tell me about yourself')) {
-    return `I'm ${botName}, ${botDescription || 'your helpful assistant'}. I'm here to answer your questions and provide information about our services. What would you like to know?`;
+  if (/^(thank you|thanks)/.test(lowerMessage)) {
+    return `You're welcome! I'm happy to help.`;
   }
   
-  // Goodbye
-  if (normalizedQuery.includes('goodbye') || normalizedQuery.includes('bye') || normalizedQuery.includes('see you')) {
-    return `Goodbye! It was nice chatting with you. If you have any more questions later, feel free to come back. Have a great day!`;
+  if (/^(bye|goodbye)/.test(lowerMessage)) {
+    return `Goodbye! Feel free to come back if you have more questions.`;
   }
   
-  // Thank you
-  if (normalizedQuery.includes('thank you') || normalizedQuery.includes('thanks')) {
-    return `You're very welcome! I'm happy to help. Is there anything else you'd like to know about our services?`;
+  if (/^(what can you do|help|your capabilities)/.test(lowerMessage)) {
+    return `I'm ${botName}${botDescription ? `, ${botDescription}` : ''}. I can answer questions and help you with information I've been trained on.`;
   }
   
-  // Default response for other basic conversation
-  return `Hi there! I'm ${botName}. ${botDescription || 'I\'m here to help you with any questions.'} What can I assist you with today?`;
-}
-
-// Enhanced search function using keywords and categories
-function findRelevantTrainingMessages(userQuery: string, bot: Bot) {
-  const queryWords = userQuery.toLowerCase().split(/\s+/).filter(word => word.length > 2);
-  const trainingMessages = bot.trainingMessages;
-  
-  // Define semantic mappings for common queries
-  const semanticMappings: { [key: string]: string[] } = {
-    'cost': ['pricing', 'price', 'cost', 'rate', 'fee', 'charge'],
-    'price': ['pricing', 'price', 'cost', 'rate', 'fee', 'charge'],
-    'pricing': ['pricing', 'price', 'cost', 'rate', 'fee', 'charge'],
-    'how much': ['pricing', 'price', 'cost', 'rate', 'fee', 'charge'],
-    'hours': ['hours', 'open', 'close', 'time', 'schedule', 'timing'],
-    'open': ['hours', 'open', 'close', 'time', 'schedule', 'timing'],
-    'close': ['hours', 'open', 'close', 'time', 'schedule', 'timing'],
-    'time': ['hours', 'open', 'close', 'time', 'schedule', 'timing'],
-    'schedule': ['hours', 'open', 'close', 'time', 'schedule', 'timing'],
-    'location': ['location', 'address', 'place', 'where'],
-    'address': ['location', 'address', 'place', 'where'],
-    'where': ['location', 'address', 'place', 'where'],
-    'contact': ['contact', 'phone', 'number', 'call'],
-    'phone': ['contact', 'phone', 'number', 'call'],
-    'services': ['services', 'offer', 'provide', 'what'],
-    'what': ['services', 'offer', 'provide', 'what'],
-    'help': ['help', 'assist', 'support', 'guide'],
-    'assist': ['help', 'assist', 'support', 'guide']
-  };
-  
-  const scoredMessages = trainingMessages.map(message => {
-    let score = 0;
-    const messageText = message.content.toLowerCase();
-    const keywords = message.keywords || [];
-    
-    // Direct keyword matches (highest priority)
-    queryWords.forEach(word => {
-      if (keywords.some(keyword => keyword.toLowerCase().includes(word) || word.includes(keyword.toLowerCase()))) {
-        score += 5;
-      }
-      if (messageText.includes(word)) {
-        score += 2;
-      }
-    });
-    
-    // Semantic mappings (medium priority)
-    queryWords.forEach(word => {
-      const semanticMatches = semanticMappings[word] || [];
-      semanticMatches.forEach(semanticWord => {
-        if (keywords.some(keyword => keyword.toLowerCase().includes(semanticWord) || semanticWord.includes(keyword.toLowerCase()))) {
-          score += 4;
-        }
-        if (messageText.includes(semanticWord)) {
-          score += 2;
-        }
-      });
-    });
-    
-    // Category relevance
-    if (message.category) {
-      queryWords.forEach(word => {
-        if (message.category!.toLowerCase().includes(word) || word.includes(message.category!.toLowerCase())) {
-          score += 3;
-        }
-        // Check semantic mappings for categories too
-        const semanticMatches = semanticMappings[word] || [];
-        semanticMatches.forEach(semanticWord => {
-          if (message.category!.toLowerCase().includes(semanticWord) || semanticWord.includes(message.category!.toLowerCase())) {
-            score += 2;
-          }
-        });
-      });
-    }
-    
-    // Summary matches
-    if (message.summary) {
-      const summaryText = message.summary.toLowerCase();
-      queryWords.forEach(word => {
-        if (summaryText.includes(word)) {
-          score += 1.5;
-        }
-        // Check semantic mappings for summaries too
-        const semanticMatches = semanticMappings[word] || [];
-        semanticMatches.forEach(semanticWord => {
-          if (summaryText.includes(semanticWord)) {
-            score += 1;
-          }
-        });
-      });
-    }
-    
-    return { ...message, score };
-  });
-  
-  // Return top 3 most relevant messages
-  return scoredMessages
-    .filter(msg => msg.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-}
-
-// Calculate confidence based on how well the training data matches
-function calculateConfidence(userQuery: string, relevantMessages: any[]): number {
-  if (relevantMessages.length === 0) return 0.1;
-  
-  const queryWords = userQuery.toLowerCase().split(/\s+/).filter(word => word.length > 2);
-  const bestMessage = relevantMessages[0];
-  
-  let matches = 0;
-  const messageKeywords = bestMessage.keywords || [];
-  const messageText = bestMessage.content.toLowerCase();
-  
-  queryWords.forEach(word => {
-    if (messageKeywords.some((keyword: string) => 
-      keyword.toLowerCase().includes(word) || word.includes(keyword.toLowerCase())
-    )) {
-      matches += 2;
-    } else if (messageText.includes(word)) {
-      matches += 1;
-    }
-  });
-  
-  const confidence = Math.min(matches / (queryWords.length * 2), 1.0);
-  return Math.max(confidence, 0.1);
+  return `I'm ${botName} and I'm here to help! What would you like to know?`;
 }
 
 // Helper function to get or create chat session
 async function getOrCreateChatSession(
-  botId: string, 
-  sessionId: string, 
+  botId: string,
+  sessionId: string,
   bot: Bot,
-  userAgent?: string,
+  userAgent: string | undefined,
   userId?: string,
   userPhoneNumber?: string
 ): Promise<ChatSession> {
-  // Try to get existing session
-  let session = await serverDb.getChatSession(sessionId);
-  
-  if (!session) {
-    // Create new session
-    session = {
+  try {
+    // Try to get existing session
+    let session = await serverDb.getChatSession(sessionId);
+    
+    if (!session) {
+      // Create new session
+      session = {
+        id: sessionId,
+        botId,
+        botName: bot.name,
+        botProfilePictureUrl: bot.profilePictureUrl,
+        userId: userId || 'anonymous',
+        userPhoneNumber,
+        userAgent: userAgent || 'unknown',
+        messages: [],
+        messageCount: 0,
+        successfulResponses: 0,
+        failedQuestions: 0,
+        averageResponseTime: 0,
+        isAuthenticated: !!userId,
+        startedAt: new Date(),
+        lastActivityAt: new Date(),
+        isCompleted: false
+      };
+      
+      await serverDb.createChatSession(session);
+    }
+    
+    return session;
+  } catch (error) {
+    console.error('Error getting/creating chat session:', error);
+    // Return a basic session if database fails
+    return {
       id: sessionId,
       botId,
       botName: bot.name,
       botProfilePictureUrl: bot.profilePictureUrl,
+      userId: userId || 'anonymous',
+      userPhoneNumber,
+      userAgent: userAgent || 'unknown',
       messages: [],
+      messageCount: 0,
+      successfulResponses: 0,
+      failedQuestions: 0,
+      averageResponseTime: 0,
+      isAuthenticated: !!userId,
       startedAt: new Date(),
       lastActivityAt: new Date(),
-      userAgent,
-      userId,
-      userPhoneNumber,
-      isAuthenticated: !!userId,
-      messageCount: 0,
-      averageResponseTime: 0,
-      failedQuestions: 0,
-      successfulResponses: 0,
       isCompleted: false
     };
-    
-    await serverDb.createChatSession(session);
-  } else if (userId && !session.isAuthenticated) {
-    // Upgrade anonymous session to authenticated
-    session.userId = userId;
-    session.userPhoneNumber = userPhoneNumber;
-    session.isAuthenticated = true;
-    await serverDb.updateChatSession(session);
   }
-  
-  return session;
+}
+
+// Helper function to create unanswered question
+async function createUnansweredQuestion(
+  botId: string,
+  sessionId: string,
+  question: string,
+  confidence: number,
+  userAgent: string | undefined
+): Promise<void> {
+  try {
+    const unansweredQuestion: UnansweredQuestion = {
+      id: `question_${nanoid(12)}`,
+      botId,
+      sessionId,
+      question,
+      confidence,
+      userAgent: userAgent || 'unknown',
+      isAnswered: false,
+      timestamp: new Date(),
+      askedAt: new Date()
+    };
+    
+    await serverDb.createUnansweredQuestion(unansweredQuestion);
+  } catch (error) {
+    console.error('Error creating unanswered question:', error);
+  }
 }
 
 // Helper function to update chat session with new message
@@ -245,16 +146,17 @@ async function updateChatSession(
   userMessage: string, 
   botResponse: string, 
   confidence: number, 
-  responseTime: number
+  responseTime: number,
+  usedTrainingIds: string[] = []
 ): Promise<void> {
-  const userMsg: ChatMessage = {
+  const userMsg: any = {
     id: `msg_${Date.now()}_user`,
     type: 'user',
     content: userMessage,
     timestamp: new Date()
   };
-  
-  const botMsg: ChatMessage = {
+
+  const botMsg: any = {
     id: `msg_${Date.now()}_bot`,
     type: 'bot',
     content: botResponse,
@@ -262,7 +164,8 @@ async function updateChatSession(
     metadata: {
       confidence,
       responseTime,
-      wasAnswered: confidence >= MIN_CONFIDENCE_THRESHOLD
+      wasAnswered: confidence >= MIN_CONFIDENCE_THRESHOLD,
+      usedTrainingIds
     }
   };
   
@@ -283,39 +186,18 @@ async function updateChatSession(
   await serverDb.updateChatSession(session);
 }
 
-// Helper function to create unanswered question
-async function createUnansweredQuestion(
-  botId: string, 
-  sessionId: string, 
-  question: string, 
-  confidence: number,
-  userAgent?: string
-): Promise<void> {
-  const unansweredQuestion: UnansweredQuestion = {
-    id: `uq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    botId,
-    question,
-    timestamp: new Date(),
-    sessionId,
-    isAnswered: false,
-    userAgent,
-    confidence
-  };
-  
-  await serverDb.createUnansweredQuestion(unansweredQuestion);
-  console.log('❓ Created unanswered question:', unansweredQuestion.id);
-}
-
-export default async function handler(
+const handler = async (
   req: NextApiRequest,
-  res: NextApiResponse<ChatResponse>
-) {
+  res: NextApiResponse<ChatWithBotResponse>
+) => {
   const { botId } = req.query;
 
-  if (!botId || typeof botId !== 'string') {
+  // Validate bot ID
+  const botIdValidation = validateBotId(botId as string);
+  if (!botIdValidation.isValid) {
     return res.status(400).json({
       success: false,
-      error: 'Bot ID is required',
+      error: botIdValidation.errors.join(', '),
       timestamp: new Date()
     });
   }
@@ -329,10 +211,34 @@ export default async function handler(
   }
 
   try {
+    console.log('🔧 Debug: Environment check');
+    console.log(`- OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'Set' : 'Not set'}`);
+    console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
+    
     const startTime = Date.now();
-    const { message, sessionId } = req.body as ChatRequest;
+    const { message, sessionId } = req.body as ChatWithBotRequest;
     const finalSessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const userAgent = req.headers['user-agent'];
+    const userAgent = req.headers['user-agent'] as string;
+
+    // Validate message
+    const messageValidation = validateChatMessage(message);
+    if (!messageValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: messageValidation.errors.join(', '),
+        timestamp: new Date()
+      });
+    }
+
+    // Validate session ID
+    const sessionIdValidation = validateSessionId(finalSessionId);
+    if (!sessionIdValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: sessionIdValidation.errors.join(', '),
+        timestamp: new Date()
+      });
+    }
 
     // Check for authentication (optional for chat)
     let authUser = null;
@@ -347,18 +253,11 @@ export default async function handler(
       }
     }
 
-    if (!message || !message.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Message is required',
-        timestamp: new Date()
-      });
-    }
-
     // Get the bot and check if it's deployed
-    const bot = await serverDb.getBot(botId);
+    let bot = await serverDb.getBot(botId as string);
     
     if (!bot) {
+      console.log('❌ Bot not found:', botId);
       return res.status(404).json({
         success: false,
         error: 'Bot not found',
@@ -376,7 +275,7 @@ export default async function handler(
 
     // Get or create chat session for analytics
     const chatSession = await getOrCreateChatSession(
-      botId, 
+      botId as string, 
       finalSessionId, 
       bot, 
       userAgent,
@@ -388,35 +287,88 @@ export default async function handler(
     let botResponse = '';
     let relevantMessages: any[] = [];
     let wasAnswered = false;
+    let usedTrainingIds: string[] = [];
 
     // Check if this is basic conversation first
     if (isBasicConversation(message.trim())) {
-      botResponse = generateBasicConversationResponse(message.trim(), bot.name, bot.description || '');
+      botResponse = generateBasicConversationResponse(message.trim(), bot!.name, bot!.description || '');
       confidence = 0.9; // High confidence for basic conversation
       wasAnswered = true;
     } else {
-      // Find relevant training messages for specific questions
-      relevantMessages = findRelevantTrainingMessages(message.trim(), bot);
-      
-      // Calculate confidence
-      confidence = calculateConfidence(message.trim(), relevantMessages);
-      
-      // Generate response
-      botResponse = await generateBotResponse(message.trim(), bot.name, bot.description || '', relevantMessages);
-      
-      // Determine if the question was answered
-      wasAnswered = confidence >= MIN_CONFIDENCE_THRESHOLD;
-      
-      // Create unanswered question if confidence is low
-      if (!wasAnswered) {
-        await createUnansweredQuestion(botId, finalSessionId, message.trim(), confidence, userAgent);
+      // Get training entries for embedding search
+      console.log(`🔍 Fetching training entries for bot ${botId}...`);
+      const trainingEntries = await serverDb.getTrainingEntries(botId as string);
+      console.log(`📚 Found ${trainingEntries.length} training entries`);
+
+      if (trainingEntries.length === 0) {
+        // No training data available
+        botResponse = `I'm ${bot!.name} and I'm still learning! I don't have any training data yet. Please ask my creator to train me with some information first.`;
+        confidence = 0;
+        wasAnswered = false;
+      } else {
+        try {
+          console.log(`🔍 Starting embedding search for: "${message.trim()}"`);
+          
+          // Use embedding-based search
+          const chatResult = await handleChatWithEmbeddings(
+            message.trim(),
+            botId as string,
+            trainingEntries
+          );
+
+          botResponse = chatResult.response;
+          confidence = chatResult.confidence;
+          wasAnswered = chatResult.wasAnswered;
+          usedTrainingIds = chatResult.usedTrainingIds;
+          
+          console.log(`✅ Chat result: ${wasAnswered ? 'Answered' : 'Not answered'}, Confidence: ${confidence.toFixed(3)}`);
+          
+          // Create relevant messages from the training entries that were used
+          relevantMessages = trainingEntries
+            .filter(entry => usedTrainingIds.includes(entry.id))
+            .map((entry: any) => {
+              const content = entry.question
+                ? `Q: ${entry.question} A: ${entry.answer}`
+                : (entry.answer || entry.content || entry.contextBlock || '');
+              let summary = '';
+              if (entry.summary) {
+                summary = entry.summary;
+              } else if (entry.content) {
+                summary = entry.content.substring(0, 100);
+              } else if (entry.answer) {
+                summary = entry.answer.substring(0, 100);
+              } else if (entry.question) {
+                summary = entry.question.substring(0, 100);
+              } else if (entry.contextBlock) {
+                summary = entry.contextBlock.substring(0, 100);
+              } else {
+                summary = content.substring(0, 100);
+              }
+              return {
+                content,
+                summary
+              };
+            });
+        } catch (chatError) {
+          console.error('❌ Error in handleChatWithEmbeddings:', chatError);
+          // More specific error message
+          botResponse = `I'm ${bot.name} and I'm having trouble processing your request right now. This might be due to a temporary issue with my AI processing. Please try again in a moment, or contact my creator if the problem persists.`;
+          confidence = 0;
+          wasAnswered = false;
+          usedTrainingIds = [];
+        }
       }
+    }
+
+    // Create unanswered question if confidence is low
+    if (!wasAnswered && confidence < MIN_CONFIDENCE_THRESHOLD) {
+      await createUnansweredQuestion(botId as string, finalSessionId, message.trim(), confidence, userAgent);
     }
     
     const responseTime = Date.now() - startTime;
 
     // Update chat session with this interaction
-    await updateChatSession(chatSession, message.trim(), botResponse, confidence, responseTime);
+    await updateChatSession(chatSession, message.trim(), botResponse, confidence, responseTime, usedTrainingIds);
 
     console.log(`💬 Bot ${botId} chat - Confidence: ${confidence.toFixed(2)}, Answered: ${wasAnswered}, Response time: ${responseTime}ms`);
 
@@ -427,18 +379,35 @@ export default async function handler(
         confidence,
         responseTime,
         sessionId: finalSessionId,
-        relevantTraining: relevantMessages.map(msg => msg.summary || msg.content.substring(0, 100) + '...'),
         wasAnswered
       },
       timestamp: new Date()
     });
 
-  } catch (error) {
-    console.error('Error in bot chat:', error);
+  } catch (error: any) {
+    console.error('❌ Error in bot chat:', error);
+    console.error('❌ Error stack:', error.stack);
+    
+    // More specific error messages based on error type
+    let errorMessage = 'Internal server error';
+    
+    if (error.message?.includes('OpenAI')) {
+      errorMessage = 'AI service temporarily unavailable. Please try again in a moment.';
+    } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      errorMessage = 'Network connection issue. Please check your internet connection and try again.';
+    } else if (error.message?.includes('rate limit')) {
+      errorMessage = 'Too many requests. Please wait a moment before trying again.';
+    } else if (error.message?.includes('authentication')) {
+      errorMessage = 'Authentication error. Please refresh the page and try again.';
+    }
+    
     return res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      error: errorMessage,
       timestamp: new Date()
     });
   }
-} 
+};
+
+// Export with rate limiting
+export default withRateLimit(chatLimiter, handler); 

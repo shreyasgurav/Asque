@@ -37,6 +37,8 @@ export interface UnansweredQuestion {
   userAgent?: string;
   ipAddress?: string;
   confidence?: number; // AI confidence when it failed to answer
+  askedAt?: Date;
+  answerCount?: number;
 }
 
 // Chat Analytics Interface
@@ -74,6 +76,27 @@ export interface Bot {
   unansweredQuestions?: UnansweredQuestion[];
 }
 
+// New Training Data Structure
+export interface TrainingEntry {
+  id: string;
+  type: "qa" | "context";
+  
+  // For Q&A entries
+  question?: string;
+  answer?: string;
+  
+  // For context entries
+  contextBlock?: string;
+  
+  // Embedding and metadata
+  embedding: number[]; // 1536-dimensional vector
+  source: "user-input" | "file" | "web-paste";
+  keywords?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Legacy TrainingMessage interface (for backward compatibility)
 export interface TrainingMessage {
   id: string;
   content: string;
@@ -97,6 +120,7 @@ export interface ChatMessage {
     confidence?: number;
     responseTime?: number;
     wasAnswered?: boolean;
+    usedTrainingIds?: string[];
   };
 }
 

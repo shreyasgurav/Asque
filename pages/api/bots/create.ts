@@ -3,6 +3,8 @@ import { nanoid } from 'nanoid';
 import { CreateBotRequest, CreateBotResponse, Bot } from '@/types';
 import { serverDb } from '@/lib/database';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth/server';
+import { withRateLimit, apiLimiter } from '@/lib/rate-limit';
+import { validateBotCreation } from '@/lib/validation';
 
 const handler = async (
   req: AuthenticatedRequest,
@@ -10,7 +12,6 @@ const handler = async (
 ) => {
   console.log('🤖 Bot creation API called');
   console.log('Method:', req.method);
-  console.log('Body:', JSON.stringify(req.body, null, 2));
 
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -22,19 +23,26 @@ const handler = async (
 
   try {
     const { name, description, profilePictureUrl, welcomeMessage }: CreateBotRequest = req.body;
-    const ownerId = req.user.uid; // Get owner ID from authenticated user
-    const ownerPhoneNumber = req.user.phoneNumber; // Get phone number for cross-session identification
+    const ownerId = req.user.uid;
+    const ownerPhoneNumber = req.user.phoneNumber;
 
     console.log('📝 Validating input...');
     console.log('👤 Authenticated user:', req.user.uid);
     console.log('📱 User phone number:', req.user.phoneNumber);
 
-    // Validate input
-    if (!name || !name.trim()) {
-      console.log('❌ Validation failed: Bot name is required');
+    // Validate input using the validation utility
+    const validation = validateBotCreation({
+      name,
+      description,
+      welcomeMessage,
+      profilePictureUrl
+    });
+
+    if (!validation.isValid) {
+      console.log('❌ Validation failed:', validation.errors);
       return res.status(400).json({
         success: false,
-        error: 'Bot name is required',
+        error: validation.errors.join(', '),
         timestamp: new Date()
       });
     }
@@ -49,23 +57,23 @@ const handler = async (
     
     console.log('🆔 Generated bot ID:', botId);
     
-    // Create bot object
+    // Create bot object with sanitized values
     const newBot: Bot = {
       id: botId,
-      name: name.trim(),
-      description: description?.trim() || '', // Ensure it's never undefined
+      name: validation.sanitizedValue || name.trim(),
+      description: description?.trim() || '',
       profilePictureUrl: profilePictureUrl || undefined,
       welcomeMessage: welcomeMessage?.trim() || undefined,
       ownerId,
       ownerPhoneNumber: ownerPhoneNumber || undefined,
-      status: 'deployed', // CHANGED: Make bot public by default
+      status: 'training',
       trainingMessages: [],
       publicUrl,
       createdAt: now,
       updatedAt: now
     };
-    console.log('📦 Created bot object (should be deployed):', newBot);
-    console.log('🔍 Debug - Full bot object:', JSON.stringify(newBot, null, 2));
+
+    console.log('📦 Created bot object:', newBot);
 
     // Save to database
     console.log('💾 Saving bot to database...');
@@ -96,12 +104,28 @@ const handler = async (
       console.error('Error stack:', error.stack);
     }
     
+    // More specific error messages based on error type
+    let errorMessage = 'Failed to create bot';
+    
+    if (error instanceof Error) {
+      if (error.message?.includes('Firebase') || error.message?.includes('database')) {
+        errorMessage = 'Database connection issue. Please try again in a moment.';
+      } else if (error.message?.includes('validation')) {
+        errorMessage = 'Invalid bot information provided. Please check your input and try again.';
+      } else if (error.message?.includes('authentication')) {
+        errorMessage = 'Authentication error. Please log in again and try creating the bot.';
+      } else if (error.message?.includes('rate limit')) {
+        errorMessage = 'Too many requests. Please wait a moment before creating another bot.';
+      }
+    }
+    
     return res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      error: errorMessage,
       timestamp: new Date()
     });
   }
 };
 
-export default withAuth(handler); 
+// Export with rate limiting
+export default withRateLimit(apiLimiter, withAuth(handler)); 

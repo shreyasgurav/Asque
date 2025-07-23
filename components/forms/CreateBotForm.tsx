@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { CreateBotRequest, CreateBotResponse } from '@/types';
 import { useAuth } from '@/components/auth/AuthContext';
 import { authenticatedFetch } from '@/lib/auth';
@@ -13,8 +13,6 @@ interface FormData {
   name: string;
   description: string;
   welcomeMessage: string;
-  profilePicture: File | null;
-  profilePicturePreview: string | null;
 }
 
 export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps) {
@@ -22,89 +20,10 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
-    welcomeMessage: '',
-    profilePicture: null,
-    profilePicturePreview: null
+    welcomeMessage: ''
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      setError('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      setError('Image file size must be less than 5MB');
-      return;
-    }
-
-    setError(null);
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setFormData(prev => ({
-        ...prev,
-        profilePicture: file,
-        profilePicturePreview: e.target?.result as string
-      }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveProfilePicture = () => {
-    setFormData(prev => ({
-      ...prev,
-      profilePicture: null,
-      profilePicturePreview: null
-    }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const uploadProfilePicture = async (file: File): Promise<string> => {
-    setIsUploading(true);
-    try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'bot-profile');
-
-      const response = await authenticatedFetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        // Don't set Content-Type header, let the browser set it with boundary
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (!result.success || !result.url) {
-        throw new Error(result.error || 'Upload failed');
-      }
-
-      return result.url;
-    } catch (error) {
-      console.error('Profile picture upload error:', error);
-      throw new Error('Failed to upload profile picture. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,24 +42,10 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
         return;
       }
 
-      let profilePictureUrl: string | undefined;
-
-      // Upload profile picture if selected
-      if (formData.profilePicture) {
-        try {
-          profilePictureUrl = await uploadProfilePicture(formData.profilePicture);
-        } catch (error) {
-          setError(error instanceof Error ? error.message : 'Failed to upload profile picture');
-          setIsLoading(false);
-          return;
-        }
-      }
-
       const requestData: CreateBotRequest = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         welcomeMessage: formData.welcomeMessage.trim() || undefined,
-        profilePictureUrl,
         ownerId: user.uid
       };
 
@@ -171,88 +76,15 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-800/50 to-slate-700/50 border border-slate-600/50 rounded-2xl backdrop-blur-sm p-6 relative overflow-hidden">
+    <div className="bg-gradient-to-br from-slate-800/50 to-slate-700/50 border border-slate-600/50 rounded-xl backdrop-blur-sm p-4 relative overflow-hidden">
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 hover:opacity-100 transition-opacity duration-500"></div>
 
       <div className="relative z-10">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Profile Picture Section */}
-          <div className="space-y-2">
-            <label className="block text-base font-semibold text-white mb-2">
-              Bot Profile Picture
-              <span className="text-slate-400 text-sm ml-2">(optional)</span>
-            </label>
-            
-            <div className="flex items-center space-x-4">
-              {/* Profile Picture Preview */}
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center overflow-hidden">
-                  {formData.profilePicturePreview ? (
-                    <img
-                      src={formData.profilePicturePreview}
-                      alt="Profile preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 text-slate-400">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Remove button */}
-                {formData.profilePicturePreview && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveProfilePicture}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                    disabled={isUploading}
-                  >
-                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-
-              {/* Upload Button */}
-              <div className="flex-1">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  disabled={isUploading}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="w-full px-3 py-2 border border-slate-600/50 rounded-lg text-sm font-medium text-white bg-slate-800/50 hover:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-                >
-                  {isUploading ? (
-                    <div className="flex items-center justify-center">
-                      <Loading size="sm" />
-                      <span className="ml-2">Uploading...</span>
-                    </div>
-                  ) : (
-                    'Choose Image'
-                  )}
-                </button>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  JPEG, PNG, GIF, WebP • Max 5MB
-                </p>
-              </div>
-            </div>
-          </div>
-
+        <form onSubmit={handleSubmit} className="space-y-3">
           {/* Bot Name */}
           <div>
-            <label htmlFor="name" className="block text-base font-semibold text-white mb-2">
+            <label htmlFor="name" className="block text-sm font-semibold text-white mb-1">
               Bot Name *
             </label>
             <input
@@ -260,8 +92,8 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
               id="name"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="e.g., Hostel Clearance HelpBot"
-              className="w-full px-3 py-3 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-base"
+              placeholder="Write name of your Chat"
+              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-sm"
               disabled={isLoading}
               maxLength={100}
             />
@@ -269,17 +101,17 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
 
           {/* Bot Description */}
           <div>
-            <label htmlFor="description" className="block text-base font-semibold text-white mb-2">
+            <label htmlFor="description" className="block text-sm font-semibold text-white mb-1">
               Bot Purpose / Description
-              <span className="text-slate-400 text-sm ml-2">(optional)</span>
+              <span className="text-slate-400 text-xs ml-2">(optional)</span>
             </label>
             <textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Write what your bot does in simple words"
-              rows={3}
-              className="w-full px-3 py-3 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-300 text-base"
+              rows={2}
+              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-300 text-sm"
               disabled={isLoading}
               maxLength={500}
             />
@@ -287,9 +119,9 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
 
           {/* Custom Welcome Message */}
           <div>
-            <label htmlFor="welcomeMessage" className="block text-base font-semibold text-white mb-2">
+            <label htmlFor="welcomeMessage" className="block text-sm font-semibold text-white mb-1">
               Custom Welcome Message
-              <span className="text-slate-400 text-sm ml-2">(optional)</span>
+              <span className="text-slate-400 text-xs ml-2">(optional)</span>
             </label>
             <textarea
               id="welcomeMessage"
@@ -297,23 +129,23 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
               onChange={(e) => setFormData(prev => ({ ...prev, welcomeMessage: e.target.value }))}
               placeholder="Hi! I'm your AI assistant. How can I help you today?"
               rows={2}
-              className="w-full px-3 py-3 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-300 text-base"
+              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-300 text-sm"
               disabled={isLoading}
               maxLength={200}
             />
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-400 mt-0.5">
               This message will be shown to users when they first chat with your bot
             </p>
           </div>
 
           {/* Error Display */}
           {error && (
-            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-2">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
-                <p className="text-red-300">{error}</p>
+                <p className="text-red-300 text-sm">{error}</p>
               </div>
             </div>
           )}
@@ -322,20 +154,20 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
           <button
             type="submit"
             disabled={isLoading || !formData.name.trim()}
-            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 px-6 rounded-lg text-lg font-semibold shadow-xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-2 px-4 rounded-lg text-base font-semibold shadow-xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
           >
             {isLoading ? (
               <div className="flex items-center">
                 <Loading size="sm" />
-                <span className="ml-3">Creating Bot...</span>
+                <span className="ml-2">Creating Bot...</span>
               </div>
             ) : (
               <>
-                <svg className="mr-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 Create Bot
-                <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
               </>
@@ -344,29 +176,29 @@ export default function CreateBotForm({ onSuccess, onError }: CreateBotFormProps
         </form>
 
         {/* Info Section */}
-        <div className="mt-6 p-4 bg-slate-800/30 rounded-lg border border-slate-600/30">
-          <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mt-4 p-3 bg-slate-800/30 rounded-lg border border-slate-600/30">
+          <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             What happens next?
           </h3>
-          <div className="grid md:grid-cols-2 gap-3 text-slate-300">
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center text-xs font-bold text-blue-300 mt-0.5">
+          <div className="grid md:grid-cols-2 gap-2 text-slate-300">
+            <div className="flex items-start gap-2">
+              <div className="w-4 h-4 bg-blue-500/20 rounded-full flex items-center justify-center text-xs font-bold text-blue-300 mt-0.5">
                 1
               </div>
               <div>
-                <p className="font-medium text-white text-sm">Train Your Bot</p>
+                <p className="font-medium text-white text-xs">Train Your Bot</p>
                 <p className="text-xs">Chat with your bot and teach it everything it needs to know</p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 bg-purple-500/20 rounded-full flex items-center justify-center text-xs font-bold text-purple-300 mt-0.5">
+            <div className="flex items-start gap-2">
+              <div className="w-4 h-4 bg-purple-500/20 rounded-full flex items-center justify-center text-xs font-bold text-purple-300 mt-0.5">
                 2
               </div>
               <div>
-                <p className="font-medium text-white text-sm">Deploy & Share</p>
+                <p className="font-medium text-white text-xs">Deploy & Share</p>
                 <p className="text-xs">Get a shareable link that anyone can use to chat with your bot</p>
               </div>
             </div>
