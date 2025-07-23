@@ -211,16 +211,39 @@ export default function LandingChatPage() {
             {!selectedSessionId ? (
               !isAuthenticated ? (
                 <div className="flex-1 flex flex-col items-center justify-center">
-                  <p className="text-sm text-[var(--muted-foreground)] text-center mb-4 font-medium leading-snug whitespace-nowrap" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
+                  <p className="text-[15px] sm:text-base md:text-lg text-[var(--muted-foreground)] text-center mb-4 font-medium leading-snug max-w-xs sm:max-w-md" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
                     Sign in to save your chats and continue conversations.
                   </p>
                   <button
                     onClick={() => router.push('/login')}
-                    className="signInButton"
+                    className="signInButton signInButtonSmall"
                     style={{ minWidth: 44, minHeight: 32 }}
                   >
                     Sign In
                   </button>
+                  <style jsx>{`
+                    .signInButton {
+                      background: rgba(255, 255, 255, 0.1);
+                      border: 0px solid rgba(255, 255, 255, 0.1);
+                      border-radius: 15px;
+                      padding: 7px 14px;
+                      color: rgba(255, 255, 255, 0.8);
+                      font-size: 13px;
+                      font-weight: 500;
+                      cursor: pointer;
+                      transition: all 0.3s ease;
+                      backdrop-filter: blur(4px);
+                    }
+                    .signInButtonSmall {
+                      padding: 3px 8px;
+                      font-size: 11px;
+                    }
+                    .signInButton:hover {
+                      background: rgba(255, 255, 255, 0.8);
+                      border-color: rgba(255, 255, 255, 0.3);
+                      color: black;
+                    }
+                  `}</style>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center">
