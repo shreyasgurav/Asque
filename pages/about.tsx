@@ -5,6 +5,7 @@ import { motion, useInView, easeOut } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
+import { useRouter } from 'next/router';
 
 import {
   Sparkles,
@@ -35,6 +36,7 @@ import Header from "@/components/layout/Header";
 import SEO from "@/components/ui/SEO";
 
 export default function AsQueLanding() {
+  const router = useRouter();
   const [isVisible, setIsVisible] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
@@ -90,8 +92,7 @@ export default function AsQueLanding() {
   }, [step1InView, step2InView, step3InView])
 
   const handleGetStarted = () => {
-    // Mock navigation - replace with actual navigation logic
-    console.log("Navigate to create page")
+    router.push('/create');
   }
 
   const containerVariants = {
@@ -432,15 +433,13 @@ export default function AsQueLanding() {
                   variants={itemVariants}
                 >
                   <div className="flex justify-center items-center mb-8 md:mb-12">
-                    <EnhancedButton
-                      variant="primary"
-                      size="md"
+                    <span
                       onClick={handleGetStarted}
-                      icon={Zap}
-                      className="w-full max-w-xs sm:w-auto"
+                      className="cursor-pointer select-none text-xl md:text-2xl font-extrabold bg-gradient-to-r from-blue-400 via-emerald-400 to-purple-500 bg-clip-text text-transparent animate-pulse transition-all duration-300 hover:scale-105 hover:drop-shadow-lg px-6 py-3 rounded-xl border-2 border-blue-400/30 hover:border-emerald-400/60 shadow-lg"
+                      style={{ display: 'inline-block' }}
                     >
-                      Create Your First Bot
-                    </EnhancedButton>
+                      🚀 Create Your First Bot
+                    </span>
                   </div>
                 </motion.div>
               </div>
@@ -738,9 +737,6 @@ export default function AsQueLanding() {
                 >
                   See It In Action
                 </Badge>
-                <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-4 md:mb-6 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                  Example Chat Conversation
-                </h2>
                 <p className="text-base md:text-lg xl:text-xl text-slate-300 max-w-4xl mx-auto">
                   Here's how a trained chatbot handles specific questions about{" "}
                   <span className="text-emerald-400 font-semibold bg-emerald-400/10 px-2 py-1 rounded">your business</span>
@@ -845,23 +841,6 @@ export default function AsQueLanding() {
                     </div>
                   </div>
                 </Card>
-
-                {/* Call to Action */}
-                <motion.div 
-                  className="text-center mt-6 md:mt-8"
-                  variants={itemVariants}
-                >
-                  <p className="text-slate-300 mb-4 text-sm md:text-base">Create your own chatbot with specific knowledge</p>
-                  <EnhancedButton
-                    variant="success"
-                    size="md"
-                    onClick={handleGetStarted}
-                    icon={MessageSquare}
-                    className="w-full max-w-xs sm:w-auto"
-                  >
-                    Create Your Own Bot
-                  </EnhancedButton>
-                </motion.div>
               </div>
             </div>
           </motion.section>
@@ -985,15 +964,13 @@ export default function AsQueLanding() {
               </p>
 
               <div className="flex justify-center items-center mb-8 md:mb-12">
-                <EnhancedButton
-                  variant="primary"
-                  size="md"
+                <span
                   onClick={handleGetStarted}
-                  icon={Zap}
-                  className="w-full max-w-sm sm:w-auto"
+                  className="cursor-pointer select-none text-xl md:text-2xl font-extrabold bg-gradient-to-r from-blue-400 via-emerald-400 to-purple-500 bg-clip-text text-transparent animate-pulse transition-all duration-300 hover:scale-105 hover:drop-shadow-lg px-6 py-3 rounded-xl border-2 border-blue-400/30 hover:border-emerald-400/60 shadow-lg"
+                  style={{ display: 'inline-block' }}
                 >
-                  Start Building Now - It's Free
-                </EnhancedButton>
+                  🚀 Start Building Now – It’s Free!
+                </span>
               </div>
 
               {/* Trust Indicators */}

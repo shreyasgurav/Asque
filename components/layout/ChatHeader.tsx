@@ -42,11 +42,17 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ leftElement, botName }) => {
             {botName ? (
               <span className="text-xl md:text-2xl font-bold text-white truncate max-w-xs md:max-w-md lg:max-w-lg" title={botName}>{botName}</span>
             ) : (
-              <img 
-                src="/AsQue Logo NoBG.png" 
-                alt="AsQue Logo" 
-                className="w-8 h-8 object-contain"
-              />
+              <button
+                onClick={() => router.push('/')}
+                className="focus:outline-none"
+                aria-label="Go to home"
+              >
+                <img 
+                  src="/AsQue Logo NoBG.png" 
+                  alt="AsQue Logo" 
+                  className="w-8 h-8 object-contain"
+                />
+              </button>
             )}
           </div>
 

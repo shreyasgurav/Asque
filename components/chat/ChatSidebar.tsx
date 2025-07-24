@@ -37,6 +37,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   formatTime,
   sidebarRef,
 }) => {
+  // Use only real pastChats
+  const displayChats = pastChats;
   return (
     <>
       {isOpen && (
@@ -74,13 +76,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               ) : (
                 <div className="space-y-1">
                   {/* Chat List */}
-                  {pastChats.length === 0 ? (
+                  {displayChats.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-[var(--sidebar-time-text)] text-sm">No recent chats.</p>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {pastChats.map((chat: any) => (
+                      {displayChats.map((chat: any) => (
                         <button
                           key={chat.sessionId}
                           onClick={() => onSelectChat(chat.sessionId, chat.botId)}
@@ -100,17 +102,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               )}
             </div>
           )}
+          {/* Sidebar Bottom Section - always at the bottom */}
+          {isOpen && (
+            <div className="p-4 text-xs text-[var(--sidebar-time-text)] border-t border-white/10">
+              <a href="/about" className="block mb-1 opacity-70 hover:opacity-100 transition-opacity">About</a>
+              <a href="/contact" className="block mb-1 opacity-70 hover:opacity-100 transition-opacity">Contact</a>
+              <a href="https://www.linkedin.com/in/shreyasdgurav/" target="_blank" rel="noopener noreferrer" className="block opacity-80 hover:opacity-100 transition-opacity">
+                By <span className="text-blue-500 font-semibold">Shreyas Gurav</span>
+              </a>
+            </div>
+          )}
         </div>
-        {/* Sidebar Bottom Section */}
-        {isOpen && (
-          <div className="p-4 mt-auto text-xs text-[var(--sidebar-time-text)] border-t border-white/10">
-            <a href="/about" className="block mb-1 opacity-70 hover:opacity-100 transition-opacity">About</a>
-            <a href="/contact" className="block mb-1 opacity-70 hover:opacity-100 transition-opacity">Contact</a>
-            <a href="https://www.linkedin.com/in/shreyasdgurav/" target="_blank" rel="noopener noreferrer" className="block opacity-80 hover:opacity-100 transition-opacity">
-              By <span className="text-blue-500 font-semibold">Shreyas Gurav</span>
-            </a>
-          </div>
-        )}
       </div>
     </>
   );
