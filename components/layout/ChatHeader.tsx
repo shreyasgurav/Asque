@@ -38,9 +38,14 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ leftElement, botName }) => {
           {leftElement ? leftElement : <div className="w-8 h-8" />}
 
           {/* Logo or Bot Name in the center */}
-          <div className="flex-1 flex justify-center">
+          <div className="flex-1 flex justify-center px-2">
             {botName ? (
-              <span className="text-xl md:text-2xl font-bold text-white truncate max-w-xs md:max-w-md lg:max-w-lg" title={botName}>{botName}</span>
+              <span 
+                className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-bold text-white truncate max-w-[80px] sm:max-w-[120px] md:max-w-[180px] lg:max-w-[250px] xl:max-w-[350px]" 
+                title={botName}
+              >
+                {botName}
+              </span>
             ) : (
               <button
                 onClick={() => router.push('/')}
