@@ -214,6 +214,11 @@ const handler = async (
     console.log('🔧 Debug: Environment check');
     console.log(`- OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'Set' : 'Not set'}`);
     console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log('🔧 Debug: Request details');
+    console.log(`- Bot ID from URL: ${botId}`);
+    console.log(`- Request body:`, req.body);
+    console.log(`- Request method: ${req.method}`);
+    console.log(`- User agent: ${req.headers['user-agent']}`);
     
     const startTime = Date.now();
     const { message, sessionId } = req.body as ChatWithBotRequest;
@@ -221,24 +226,30 @@ const handler = async (
     const userAgent = req.headers['user-agent'] as string;
 
     // Validate message
+    console.log('🔧 Debug: Validating message:', message);
     const messageValidation = validateChatMessage(message);
     if (!messageValidation.isValid) {
+      console.log('❌ Message validation failed:', messageValidation.errors);
       return res.status(400).json({
         success: false,
         error: messageValidation.errors.join(', '),
         timestamp: new Date()
       });
     }
+    console.log('✅ Message validation passed');
 
     // Validate session ID
+    console.log('🔧 Debug: Validating session ID:', finalSessionId);
     const sessionIdValidation = validateSessionId(finalSessionId);
     if (!sessionIdValidation.isValid) {
+      console.log('❌ Session ID validation failed:', sessionIdValidation.errors);
       return res.status(400).json({
         success: false,
         error: sessionIdValidation.errors.join(', '),
         timestamp: new Date()
       });
     }
+    console.log('✅ Session ID validation passed');
 
     // Check for authentication (optional for chat)
     let authUser = null;
@@ -309,11 +320,12 @@ const handler = async (
         try {
           console.log(`🔍 Starting embedding search for: "${message.trim()}"`);
           
-          // Use embedding-based search
+          // Use embedding-based search with conversation history
           const chatResult = await handleChatWithEmbeddings(
             message.trim(),
             botId as string,
-            trainingEntries
+            trainingEntries,
+            chatSession.messages // Pass conversation history
           );
 
           botResponse = chatResult.response;

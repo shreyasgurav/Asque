@@ -270,7 +270,7 @@ export const validateBotId = (input: any): ValidationResult => {
     return { isValid: false, errors };
   }
 
-  if (!/^bot_[a-zA-Z0-9\-]{12}$/.test(input)) {
+  if (!/^bot_[a-zA-Z0-9_-]{12}$/.test(input)) {
     errors.push('Bot ID format is invalid');
   }
 

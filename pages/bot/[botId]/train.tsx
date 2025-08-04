@@ -14,6 +14,7 @@ import SEO from '@/components/ui/SEO'
 import Loading from '@/components/ui/Loading'
 import TypingIndicator from '@/components/ui/TypingIndicator'
 import Layout from '@/components/layout/Layout';
+import { renderTextWithLinks } from '@/components/ui/LinkRenderer';
 
 interface TrainingMessage {
   id: string
@@ -503,7 +504,7 @@ export default function TrainBotPage() {
                         </div>
                         <div className="bg-slate-800/80 text-slate-200 rounded-2xl shadow-md mr-12">
                           <div className="whitespace-pre-wrap break-words p-4">
-                            {response}
+                            {renderTextWithLinks(response)}
                           </div>
                         </div>
                       </div>

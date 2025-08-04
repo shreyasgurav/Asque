@@ -72,4 +72,31 @@ export function formatBytes(bytes: number): string {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-} 
+}
+
+// Convert URLs in text to clickable links
+export const convertUrlsToLinks = (text: string): string => {
+  if (!text) return text;
+  
+  // Function to clean URLs by removing trailing punctuation
+  const cleanUrl = (url: string): string => {
+    return url.replace(/[\)\]\}.,!?;:]$/, '');
+  };
+  
+  // First, handle markdown links [text](url)
+  const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let processedText = text.replace(markdownLinkRegex, (match, linkText, url) => {
+    const cleanUrlText = cleanUrl(url);
+    return `<a href="${cleanUrlText}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">${linkText}</a>`;
+  });
+  
+  // Then handle plain URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return processedText.replace(urlRegex, (url) => {
+    // Clean the URL and ensure it's properly formatted
+    const cleanUrlText = cleanUrl(url.trim());
+    return `<a href="${cleanUrlText}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">${cleanUrlText}</a>`;
+  });
+};
+
+ 

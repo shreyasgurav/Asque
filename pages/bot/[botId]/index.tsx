@@ -9,6 +9,7 @@ import Layout from '@/components/layout/Layout';
 import Loading from '@/components/ui/Loading';
 import TypingIndicator from '@/components/ui/TypingIndicator';
 import ChatSidebar from "@/components/chat/ChatSidebar";
+import { renderTextWithLinks } from '@/components/ui/LinkRenderer';
 
 // Import Lucide icons for the new UI
 import { Send, User, Star, MessageSquare, ChevronLeft, Menu } from 'lucide-react';
@@ -129,44 +130,8 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
       {/* Header - now removed, handled by ChatHeader */}
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-        {!isAuthenticated ? (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-[var(--foreground)]">
-            <p className="text-sm text-[var(--muted-foreground)] text-center mb-4 font-medium leading-snug whitespace-nowrap" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
-              Sign in to chat with {bot.name}
-            </p>
-            <button
-              onClick={() => router.push('/login')}
-              className="signInButton"
-            >
-              Sign In
-            </button>
-            <style jsx>{`
-              .signInButton {
-                background: rgba(255, 255, 255, 0.1);
-                border: 0px solid rgba(255, 255, 255, 0.1);
-                border-radius: 15px;
-                padding: 7px 14px;
-                color: rgba(255, 255, 255, 0.8);
-                font-size: 13px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                backdrop-filter: blur(4px);
-              }
-              .signInButtonSmall {
-                padding: 5px 12px;
-                font-size: 11px;
-              }
-              .signInButton:hover {
-                background: rgba(255, 255, 255, 0.8);
-                border-color: rgba(255, 255, 255, 0.3);
-                color: black;
-              }
-            `}</style>
-          </div>
-        ) : (
-          // Messages
-          <div className="max-w-4xl mx-auto p-4 space-y-6">
+        {/* Messages */}
+        <div className="max-w-4xl mx-auto p-4 space-y-6">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -198,7 +163,7 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
                   }`}
                 >
                   <div className="whitespace-pre-wrap break-words">
-                    {message.content}
+                    {renderTextWithLinks(message.content)}
                   </div>
                 </div>
 
@@ -237,7 +202,6 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
 
             <div ref={chatEndRef} />
           </div>
-        )}
       </div>
 
       {/* Input Area - Fixed at Bottom */}
@@ -253,14 +217,14 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
                 placeholder="Ask..."
                 className="flex-1 bg-transparent resize-none border-0 outline-none min-h-[40px] max-h-32 py-2 px-2 text-[var(--foreground)] placeholder:text-[var(--placeholder-foreground)] text-base leading-tight overflow-y-hidden focus:outline-none focus:ring-0 placeholder:opacity-50"
                 rows={1}
-                disabled={isTyping || !isAuthenticated}
+                disabled={isTyping}
               />
               <div className="pb-0"> {/* Adjusted padding to match original button alignment */}
                 <button
                   type="submit"
-                  disabled={!inputMessage.trim() || isTyping || !isAuthenticated}
+                  disabled={!inputMessage.trim() || isTyping}
                   className={`p-3 rounded-full transition-colors ${
-                    inputMessage.trim() && !isTyping && isAuthenticated
+                    inputMessage.trim() && !isTyping
                       ? 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:bg-[var(--primary)]/90'
                       : 'bg-[var(--muted)] text-[var(--muted-foreground)] cursor-not-allowed opacity-40'
                   }`}
@@ -549,6 +513,18 @@ export default function PublicBotPage() {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || !bot || isTyping) return;
+    
+    // Check if bot is deployed
+    if (bot.status !== 'deployed') {
+      const errorMessage: ChatMessage = {
+        id: `msg_${nanoid()}`,
+        type: 'bot',
+        content: 'Sorry, this bot is not deployed yet. Please try again later.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: `msg_${nanoid()}`,
@@ -562,13 +538,13 @@ export default function PublicBotPage() {
     setIsTyping(true);
     setMessagesSent(prev => prev + 1);
 
-    if (!isAuthenticated && messagesSent >= 2) {
-      setShowLoginPopup(true);
-      setIsTyping(false);
-      return;
-    }
-
     try {
+      console.log('🔧 Debug: Sending chat request');
+      console.log('  Bot ID from URL:', botId);
+      console.log('  Bot ID from object:', bot.id);
+      console.log('  Message:', userMessage.content);
+      console.log('  Session ID:', currentSessionId);
+      
       const requestData: ChatWithBotRequest = {
         botId: bot.id,
         message: userMessage.content,
@@ -576,15 +552,21 @@ export default function PublicBotPage() {
       };
 
       const response = isAuthenticated
-        ? await authenticatedFetch(`/api/bots/${botId}/chat`, {
+        ? await authenticatedFetch(`/api/bots/${bot.id}/chat`, {
             method: 'POST',
             body: JSON.stringify(requestData)
           })
-        : await fetch(`/api/bots/${botId}/chat`, {
+        : await fetch(`/api/bots/${bot.id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)
       });
+
+      console.log('🔧 Debug: Response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Chat API error:', errorText);
+      }
 
       const result: ChatWithBotResponse = await response.json();
 
@@ -782,8 +764,8 @@ export default function PublicBotPage() {
         </div>
       </div>
 
-      {/* Login Popup */}
-      <LoginPopup
+      {/* Login Popup - Disabled for unauthenticated chat */}
+      {/* <LoginPopup
         isOpen={showLoginPopup}
         onClose={() => setShowLoginPopup(false)}
         onSuccess={() => {
@@ -793,7 +775,7 @@ export default function PublicBotPage() {
           }
         }}
         botName={bot?.name}
-      />
+      /> */}
     </Layout>
   );
 }

@@ -188,7 +188,8 @@ export async function sendToOpenAI(
 export async function handleChatWithEmbeddings(
   userMessage: string,
   botId: string,
-  trainingEntries: any[]
+  trainingEntries: any[],
+  conversationHistory: any[] = [] // Add conversation history parameter
 ): Promise<{
   response: string;
   confidence: number;
@@ -198,6 +199,7 @@ export async function handleChatWithEmbeddings(
   try {
     console.log(`🔍 Searching for: "${userMessage}"`);
     console.log(`📚 Training entries available: ${trainingEntries.length}`);
+    console.log(`💬 Conversation history: ${conversationHistory.length} messages`);
     
     // Filter out entries without embeddings
     const validEntries = trainingEntries.filter(entry => 
@@ -240,8 +242,8 @@ export async function handleChatWithEmbeddings(
       type: entry.type || 'qa'
     }));
 
-    // Build system prompt
-    const systemPrompt = buildSystemPrompt(userMessage, contextQA);
+    // Build system prompt with conversation history
+    const systemPrompt = buildSystemPromptWithHistory(userMessage, contextQA, conversationHistory);
 
     // Get response from OpenAI
     const response = await sendToOpenAI(systemPrompt, userMessage);
@@ -271,6 +273,45 @@ export async function handleChatWithEmbeddings(
       wasAnswered: false
     };
   }
+}
+
+// New function to build system prompt with conversation history
+export function buildSystemPromptWithHistory(
+  userMessage: string, 
+  contextQA: { question: string; answer: string; type: string }[],
+  conversationHistory: any[] = []
+): string {
+  if (contextQA.length === 0) {
+    return `You are a helpful assistant. The user asked: "${userMessage}"
+
+Unfortunately, I don't have specific information about this topic. Please respond politely that you don't have information about this right now.`;
+  }
+
+  const contextSection = contextQA.map((item, index) => {
+    if (item.type === 'qa') {
+      return `Q: ${item.question || ''}
+A: ${item.answer || ''}`;
+    } else {
+      return `Information: ${item.answer || ''}`;
+    }
+  }).join('\n\n');
+
+  // Build conversation history section
+  let conversationSection = '';
+  if (conversationHistory.length > 0) {
+    const recentHistory = conversationHistory.slice(-6); // Last 6 messages (3 exchanges)
+    conversationSection = `\n\nPrevious conversation:
+${recentHistory.map(msg => `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}`).join('\n')}`;
+  }
+
+  return `You are a helpful assistant. Use the following information to answer user queries:
+
+${contextSection}${conversationSection}
+
+Now answer this question:
+"${userMessage}"
+
+Provide a helpful, accurate response based on the information above. Be conversational and natural. If the user is asking a follow-up question, make sure to reference the context from the previous conversation.`;
 }
 
 // Extract keywords and context from training message
