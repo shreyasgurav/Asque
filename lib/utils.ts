@@ -99,4 +99,196 @@ export const convertUrlsToLinks = (text: string): string => {
   });
 };
 
+// Time and location utilities for bot context awareness
+export interface UserContext {
+  location: {
+    city: string;
+    country: string;
+    timezone: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  };
+  time: {
+    currentTime: Date;
+    localTime: Date;
+    timezone: string;
+    isDaytime: boolean;
+    mealTime?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    dayOfWeek: string;
+  };
+}
+
+// Get user's location and time context
+export async function getUserContext(): Promise<UserContext | null> {
+  try {
+    // Get current time in user's timezone
+    const now = new Date();
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Get location using browser geolocation
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation not supported'));
+        return;
+      }
+      
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes cache
+      });
+    });
+
+    const { latitude, longitude } = position.coords;
+    
+    // Reverse geocoding to get city and country
+    const locationResponse = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+    );
+    
+    if (!locationResponse.ok) {
+      throw new Error('Failed to get location data');
+    }
+    
+    const locationData = await locationResponse.json();
+    
+    // Determine if it's daytime (6 AM to 6 PM)
+    const hour = now.getHours();
+    const isDaytime = hour >= 6 && hour < 18;
+    
+    // Determine meal time based on local time
+    let mealTime: 'breakfast' | 'lunch' | 'dinner' | 'snack' | undefined;
+    if (hour >= 6 && hour < 11) {
+      mealTime = 'breakfast';
+    } else if (hour >= 11 && hour < 16) {
+      mealTime = 'lunch';
+    } else if (hour >= 16 && hour < 22) {
+      mealTime = 'dinner';
+    } else {
+      mealTime = 'snack';
+    }
+    
+    // Get day of week
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayOfWeek = days[now.getDay()];
+    
+    return {
+      location: {
+        city: locationData.city || locationData.locality || 'Unknown City',
+        country: locationData.countryName || 'Unknown Country',
+        timezone,
+        coordinates: {
+          lat: latitude,
+          lng: longitude
+        }
+      },
+      time: {
+        currentTime: now,
+        localTime: now, // In user's timezone
+        timezone,
+        isDaytime,
+        mealTime,
+        dayOfWeek
+      }
+    };
+  } catch (error) {
+    console.error('Error getting user context:', error);
+    // Return basic context without location
+    const now = new Date();
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const hour = now.getHours();
+    const isDaytime = hour >= 6 && hour < 18;
+    
+    let mealTime: 'breakfast' | 'lunch' | 'dinner' | 'snack' | undefined;
+    if (hour >= 6 && hour < 11) {
+      mealTime = 'breakfast';
+    } else if (hour >= 11 && hour < 16) {
+      mealTime = 'lunch';
+    } else if (hour >= 16 && hour < 22) {
+      mealTime = 'dinner';
+    } else {
+      mealTime = 'snack';
+    }
+    
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayOfWeek = days[now.getDay()];
+    
+    return {
+      location: {
+        city: 'Unknown City',
+        country: 'Unknown Country',
+        timezone,
+        coordinates: undefined
+      },
+      time: {
+        currentTime: now,
+        localTime: now,
+        timezone,
+        isDaytime,
+        mealTime,
+        dayOfWeek
+      }
+    };
+  }
+}
+
+// Format time for display
+export function formatTime(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: timezone
+  }).format(date);
+}
+
+// Format date for display with timezone
+export function formatDateWithTimezone(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: timezone
+  }).format(date);
+}
+
+// Check if current time matches a schedule
+export function isTimeInRange(
+  currentTime: Date,
+  startTime: string, // Format: "HH:MM"
+  endTime: string,   // Format: "HH:MM"
+  timezone?: string
+): boolean {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentMinutes = currentHour * 60 + currentMinute;
+  
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMinute;
+  const endMinutes = endHour * 60 + endMinute;
+  
+  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+}
+
+// Get meal time description
+export function getMealTimeDescription(mealTime: string, isDaytime: boolean): string {
+  switch (mealTime) {
+    case 'breakfast':
+      return 'breakfast time';
+    case 'lunch':
+      return 'lunch time';
+    case 'dinner':
+      return 'dinner time';
+    case 'snack':
+      return isDaytime ? 'afternoon snack time' : 'late night snack time';
+    default:
+      return 'meal time';
+  }
+}
+
  

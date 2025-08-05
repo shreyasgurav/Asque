@@ -3,9 +3,10 @@ import { nanoid } from 'nanoid';
 import { ChatWithBotRequest, ChatWithBotResponse, Bot, ChatSession, UnansweredQuestion } from '@/types';
 import { serverDb } from '@/lib/database';
 import { verifyAuthToken } from '@/lib/auth/server';
-import { handleChatWithEmbeddings } from '@/lib/ai';
+import { handleChatWithEmbeddings, extractUserMemories, buildMemoryContext } from '@/lib/ai';
 import { withRateLimit, chatLimiter } from '@/lib/rate-limit';
 import { validateChatMessage, validateBotId, validateSessionId } from '@/lib/validation';
+import { getUserContext } from '@/lib/utils';
 
 // Configuration
 const MIN_CONFIDENCE_THRESHOLD = 0.6;
@@ -86,6 +87,12 @@ async function getOrCreateChatSession(
       };
       
       await serverDb.createChatSession(session);
+    } else {
+      // Update existing session with current bot name and profile picture
+      session.botName = bot.name;
+      session.botProfilePictureUrl = bot.profilePictureUrl;
+      session.lastActivityAt = new Date();
+      await serverDb.updateChatSession(session);
     }
     
     return session;
@@ -221,7 +228,7 @@ const handler = async (
     console.log(`- User agent: ${req.headers['user-agent']}`);
     
     const startTime = Date.now();
-    const { message, sessionId } = req.body as ChatWithBotRequest;
+    const { message, sessionId, userContext: requestUserContext } = req.body as ChatWithBotRequest;
     const finalSessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const userAgent = req.headers['user-agent'] as string;
 
@@ -320,13 +327,73 @@ const handler = async (
         try {
           console.log(`🔍 Starting embedding search for: "${message.trim()}"`);
           
-          // Use embedding-based search with conversation history
-          const chatResult = await handleChatWithEmbeddings(
-            message.trim(),
-            botId as string,
-            trainingEntries,
-            chatSession.messages // Pass conversation history
-          );
+                     // Get user memories for personalization
+           const userIdentifier = authUser?.uid || finalSessionId; // Use UID if authenticated, session ID if not
+           let userMemories: any[] = [];
+           let userMemoryContext = '';
+           
+           try {
+             userMemories = await serverDb.getUserMemories(userIdentifier, botId as string);
+             userMemoryContext = buildMemoryContext(userMemories);
+             console.log(`🧠 Loaded ${userMemories.length} memories for user ${userIdentifier}`);
+           } catch (error) {
+             console.log('Could not load user memories:', error);
+           }
+
+           // Use user context from request or fallback to server-generated context
+           let userContext = requestUserContext;
+           if (!userContext) {
+            try {
+              // Fallback to server-generated context
+              const now = new Date();
+              const timezone = 'Asia/Kolkata'; // Default to India timezone
+              const hour = now.getHours();
+              const isDaytime = hour >= 6 && hour < 18;
+              
+              let mealTime: 'breakfast' | 'lunch' | 'dinner' | 'snack' | undefined;
+              if (hour >= 6 && hour < 11) {
+                mealTime = 'breakfast';
+              } else if (hour >= 11 && hour < 16) {
+                mealTime = 'lunch';
+              } else if (hour >= 16 && hour < 22) {
+                mealTime = 'dinner';
+              } else {
+                mealTime = 'snack';
+              }
+              
+              const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+              const dayOfWeek = days[now.getDay()];
+              
+              userContext = {
+                location: {
+                  city: 'Mumbai',
+                  country: 'India',
+                  timezone,
+                  coordinates: undefined
+                },
+                time: {
+                  currentTime: now,
+                  localTime: now,
+                  timezone,
+                  isDaytime,
+                  mealTime,
+                  dayOfWeek
+                }
+              };
+            } catch (error) {
+              console.log('Could not get user context:', error);
+            }
+          }
+
+                     // Use embedding-based search with conversation history, user context, and memory
+           const chatResult = await handleChatWithEmbeddings(
+             message.trim(),
+             botId as string,
+             trainingEntries,
+             chatSession.messages, // Pass conversation history
+             userContext, // Pass user context
+             userMemoryContext // Pass user memory context
+           );
 
           botResponse = chatResult.response;
           confidence = chatResult.confidence;
@@ -334,6 +401,35 @@ const handler = async (
           usedTrainingIds = chatResult.usedTrainingIds;
           
           console.log(`✅ Chat result: ${wasAnswered ? 'Answered' : 'Not answered'}, Confidence: ${confidence.toFixed(3)}`);
+          
+          // Extract and save user memories from this conversation
+          try {
+            const memoryResult = await extractUserMemories(
+              message.trim(),
+              botResponse,
+              chatSession.messages,
+              userIdentifier,
+              botId as string,
+              finalSessionId,
+              userMemories
+            );
+            
+            // Save new memories
+            for (const memory of memoryResult.extractedMemories) {
+              await serverDb.createUserMemory(memory);
+            }
+            
+            // Update existing memories
+            for (const memory of memoryResult.updatedMemories) {
+              await serverDb.updateUserMemory(memory);
+            }
+            
+            if (memoryResult.extractedMemories.length > 0 || memoryResult.updatedMemories.length > 0) {
+              console.log(`🧠 Memory update: +${memoryResult.extractedMemories.length} new, ${memoryResult.updatedMemories.length} updated`);
+            }
+          } catch (memoryError) {
+            console.error('Error processing user memories:', memoryError);
+          }
           
           // Create relevant messages from the training entries that were used
           relevantMessages = trainingEntries

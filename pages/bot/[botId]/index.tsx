@@ -10,6 +10,7 @@ import Loading from '@/components/ui/Loading';
 import TypingIndicator from '@/components/ui/TypingIndicator';
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import { renderTextWithLinks } from '@/components/ui/LinkRenderer';
+import { getUserContext } from '@/lib/utils';
 
 // Import Lucide icons for the new UI
 import { Send, User, Star, MessageSquare, ChevronLeft, Menu } from 'lucide-react';
@@ -545,10 +546,20 @@ export default function PublicBotPage() {
       console.log('  Message:', userMessage.content);
       console.log('  Session ID:', currentSessionId);
       
+      // Get user context for time/location awareness
+      let userContext = null;
+      try {
+        userContext = await getUserContext();
+        console.log('📍 User context:', userContext);
+      } catch (error) {
+        console.log('⚠️ Could not get user context:', error);
+      }
+
       const requestData: ChatWithBotRequest = {
         botId: bot.id,
         message: userMessage.content,
-        sessionId: currentSessionId // Use the currentSessionId state
+        sessionId: currentSessionId, // Use the currentSessionId state
+        userContext // Include user context in the request
       };
 
       const response = isAuthenticated

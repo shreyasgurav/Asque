@@ -182,6 +182,7 @@ export interface ChatWithBotRequest {
   botId: string;
   message: string;
   sessionId?: string;
+  userContext?: any; // User location and time context
 }
 
 export interface ChatWithBotResponse extends ApiResponse {
@@ -226,6 +227,46 @@ export interface GetUserChatsResponse extends ApiResponse {
 
 export interface GetChatSessionResponse extends ApiResponse {
   data?: ChatSession;
+}
+
+// User Memory System Types
+export interface UserMemory {
+  id: string;
+  userId: string; // Firebase UID or session ID for anonymous users
+  botId: string; // Which bot this memory is for
+  sessionId: string; // Which chat session this came from
+  
+  // Memory content
+  memoryType: 'personal' | 'academic' | 'preference' | 'context' | 'fact';
+  key: string; // e.g., "name", "department", "class", "favorite_food"
+  value: string; // e.g., "John", "Computer Science", "CS101", "Pizza"
+  confidence: number; // AI confidence in this information (0-1)
+  
+  // Metadata
+  extractedFrom: string; // Original conversation snippet
+  conversationContext: string; // Surrounding context
+  isVerified: boolean; // Whether user confirmed this info
+  importance: number; // How important this info is (1-10)
+  
+  // Timestamps
+  firstMentioned: Date;
+  lastUpdated: Date;
+  lastUsed?: Date;
+}
+
+export interface UserMemoryContext {
+  userId: string;
+  botId: string;
+  memories: UserMemory[];
+  summary: string; // AI-generated summary of what we know about the user
+  lastUpdated: Date;
+}
+
+// Memory extraction from conversations
+export interface MemoryExtractionResult {
+  extractedMemories: Partial<UserMemory>[];
+  updatedMemories: UserMemory[];
+  memoryContext: string; // Summary for AI prompt
 }
 
 // Generic API response type

@@ -6,7 +6,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { adminDb } from '@/lib/firebase-admin';
-import { Bot, ChatSession, UnansweredQuestion, ChatAnalytics, BotAnalytics } from '@/types';
+import { Bot, ChatSession, UnansweredQuestion, ChatAnalytics, BotAnalytics, UserMemory, UserMemoryContext } from '@/types';
 
 // Helper function to calculate analytics
 const calculateAnalytics = (sessions: ChatSession[]): BotAnalytics => {
@@ -456,5 +456,101 @@ export const serverDb = {
       console.error('Error deleting training entry from Firebase:', error);
       return false;
     }
+  },
+
+  // User Memory Management
+  async createUserMemory(memory: UserMemory): Promise<UserMemory> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
+    }
+    try {
+      await adminDb.collection('userMemories').doc(memory.id).set(memory);
+      console.log(`✅ Created user memory: ${memory.key} = ${memory.value}`);
+      return memory;
+    } catch (error) {
+      console.error('Error creating user memory:', error);
+      throw error;
+    }
+  },
+
+  async getUserMemories(userId: string, botId: string): Promise<UserMemory[]> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
+    }
+    try {
+      const querySnapshot = await adminDb
+        .collection('userMemories')
+        .where('userId', '==', userId)
+        .where('botId', '==', botId)
+        .orderBy('importance', 'desc')
+        .get();
+
+      const memories: UserMemory[] = [];
+      querySnapshot.forEach((doc: any) => {
+        memories.push({ id: doc.id, ...doc.data() } as UserMemory);
+      });
+
+      console.log(`✅ Retrieved ${memories.length} memories for user ${userId} on bot ${botId}`);
+      return memories;
+    } catch (error) {
+      console.error('Error fetching user memories:', error);
+      return [];
+    }
+  },
+
+  async updateUserMemory(memory: UserMemory): Promise<UserMemory> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
+    }
+    try {
+      await adminDb.collection('userMemories').doc(memory.id).set(memory);
+      console.log(`✅ Updated user memory: ${memory.key} = ${memory.value}`);
+      return memory;
+    } catch (error) {
+      console.error('Error updating user memory:', error);
+      throw error;
+    }
+  },
+
+  async deleteUserMemory(memoryId: string): Promise<boolean> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
+    }
+    try {
+      await adminDb.collection('userMemories').doc(memoryId).delete();
+      console.log(`✅ Deleted user memory: ${memoryId}`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting user memory:', error);
+      return false;
+    }
+  },
+
+  async getUserMemoryContext(userId: string, botId: string): Promise<UserMemoryContext> {
+    const memories = await this.getUserMemories(userId, botId);
+    
+    // Generate summary of what we know about the user
+    const personalInfo = memories.filter(m => m.memoryType === 'personal');
+    const academicInfo = memories.filter(m => m.memoryType === 'academic');
+    const preferences = memories.filter(m => m.memoryType === 'preference');
+    
+    let summary = 'User profile: ';
+    if (personalInfo.length > 0) {
+      summary += personalInfo.map(m => `${m.key}: ${m.value}`).join(', ') + '. ';
+    }
+    if (academicInfo.length > 0) {
+      summary += 'Academic: ' + academicInfo.map(m => `${m.key}: ${m.value}`).join(', ') + '. ';
+    }
+    if (preferences.length > 0) {
+      summary += 'Preferences: ' + preferences.map(m => `${m.key}: ${m.value}`).join(', ') + '.';
+    }
+
+    return {
+      userId,
+      botId,
+      memories,
+      summary: summary || 'No known information about this user.',
+      lastUpdated: new Date()
+    };
   }
 }; 

@@ -1,4 +1,6 @@
 import OpenAI from 'openai';
+import { UserMemory, MemoryExtractionResult } from '@/types';
+import { nanoid } from 'nanoid';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -189,7 +191,9 @@ export async function handleChatWithEmbeddings(
   userMessage: string,
   botId: string,
   trainingEntries: any[],
-  conversationHistory: any[] = [] // Add conversation history parameter
+  conversationHistory: any[] = [], // Add conversation history parameter
+  userContext?: any, // Add user context for time/location awareness
+  userMemoryContext?: string // Add user memory context
 ): Promise<{
   response: string;
   confidence: number;
@@ -242,8 +246,8 @@ export async function handleChatWithEmbeddings(
       type: entry.type || 'qa'
     }));
 
-    // Build system prompt with conversation history
-    const systemPrompt = buildSystemPromptWithHistory(userMessage, contextQA, conversationHistory);
+    // Build system prompt with conversation history, user context, and memory
+    const systemPrompt = buildSystemPromptWithContext(userMessage, contextQA, conversationHistory, userContext, userMemoryContext);
 
     // Get response from OpenAI
     const response = await sendToOpenAI(systemPrompt, userMessage);
@@ -275,11 +279,13 @@ export async function handleChatWithEmbeddings(
   }
 }
 
-// New function to build system prompt with conversation history
-export function buildSystemPromptWithHistory(
+// New function to build system prompt with conversation history, user context, and memory
+export function buildSystemPromptWithContext(
   userMessage: string, 
   contextQA: { question: string; answer: string; type: string }[],
-  conversationHistory: any[] = []
+  conversationHistory: any[] = [],
+  userContext?: any,
+  userMemoryContext?: string
 ): string {
   if (contextQA.length === 0) {
     return `You are a helpful assistant. The user asked: "${userMessage}"
@@ -304,14 +310,33 @@ A: ${item.answer || ''}`;
 ${recentHistory.map(msg => `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}`).join('\n')}`;
   }
 
+  // Build user context section
+  let userContextSection = '';
+  if (userContext) {
+    const { location, time } = userContext;
+    const currentTime = new Date(time.currentTime).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: time.timezone
+    });
+    
+    userContextSection = `\n\nCurrent Context:
+- Location: ${location.city}, ${location.country}
+- Time: ${currentTime} (${time.timezone})
+- Day: ${time.dayOfWeek}
+- Meal Time: ${time.mealTime || 'not specified'}
+- Time of Day: ${time.isDaytime ? 'daytime' : 'nighttime'}`;
+  }
+
   return `You are a helpful assistant. Use the following information to answer user queries:
 
-${contextSection}${conversationSection}
+${contextSection}${conversationSection}${userContextSection}${userMemoryContext || ''}
 
 Now answer this question:
 "${userMessage}"
 
-Provide a helpful, accurate response based on the information above. Be conversational and natural. If the user is asking a follow-up question, make sure to reference the context from the previous conversation.`;
+Provide a helpful, accurate response based on the information above. Be conversational and natural. If the user is asking a follow-up question, make sure to reference the context from the previous conversation. Use the current time and location context to provide relevant responses when appropriate. Use what you know about the user to personalize your response (e.g., if you know their name, department, class, etc.).`;
 }
 
 // Extract keywords and context from training message
@@ -449,4 +474,160 @@ export async function searchTrainingEntries(userQuery: string, trainingEntries: 
     console.error('Error searching training entries:', error);
     return [];
   }
+}
+
+// Extract user memories from conversation
+export async function extractUserMemories(
+  userMessage: string,
+  botResponse: string,
+  conversationHistory: any[],
+  userId: string,
+  botId: string,
+  sessionId: string,
+  existingMemories: UserMemory[] = []
+): Promise<MemoryExtractionResult> {
+  try {
+    // Build context from recent conversation
+    const recentMessages = conversationHistory.slice(-4); // Last 4 messages for context
+    const conversationContext = recentMessages
+      .map(msg => `${msg.type === 'user' ? 'User' : 'Bot'}: ${msg.content}`)
+      .join('\n');
+
+    // Build existing memories context
+    const existingMemoriesContext = existingMemories.length > 0
+      ? `\n\nExisting memories about this user:\n${existingMemories.map(m => `${m.key}: ${m.value}`).join('\n')}`
+      : '';
+
+    const prompt = `Analyze this conversation and extract important user information that should be remembered:
+
+Recent conversation:
+${conversationContext}
+User: ${userMessage}
+Bot: ${botResponse}${existingMemoriesContext}
+
+Extract key information about the user that should be remembered for future conversations. Focus on:
+1. Personal info (name, age, location)
+2. Academic info (university, department, class, year, roll number)
+3. Preferences (likes, dislikes, habits)
+4. Important context (current situation, goals, needs)
+5. Facts they mention about themselves
+
+For each piece of information, determine:
+- Type: personal/academic/preference/context/fact
+- Importance: 1-10 (how useful for future conversations)
+- Confidence: 0.1-1.0 (how sure you are this is correct)
+
+Respond in JSON format:
+{
+  "extractedMemories": [
+    {
+      "key": "name",
+      "value": "John",
+      "memoryType": "personal",
+      "importance": 9,
+      "confidence": 0.95,
+      "extractedFrom": "Hi, I'm John from CS department"
+    }
+  ],
+  "memoryContext": "Brief summary of what we learned about the user"
+}
+
+Only extract information that is clearly stated or strongly implied. Don't make assumptions.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2, // Low temperature for consistent extraction
+      max_tokens: 500
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{"extractedMemories": [], "memoryContext": ""}');
+    
+    // Create full UserMemory objects
+    const extractedMemories: UserMemory[] = result.extractedMemories.map((memory: any) => ({
+      id: `memory_${nanoid(12)}`,
+      userId,
+      botId,
+      sessionId,
+      memoryType: memory.memoryType,
+      key: memory.key,
+      value: memory.value,
+      confidence: memory.confidence,
+      extractedFrom: memory.extractedFrom || userMessage,
+      conversationContext: conversationContext,
+      isVerified: false,
+      importance: memory.importance,
+      firstMentioned: new Date(),
+      lastUpdated: new Date()
+    }));
+
+    // Check for updates to existing memories
+    const updatedMemories: UserMemory[] = [];
+    for (const newMemory of extractedMemories) {
+      const existing = existingMemories.find(m => m.key === newMemory.key);
+      if (existing) {
+        // Update existing memory if new info is more confident or recent
+        if (newMemory.confidence > existing.confidence) {
+          existing.value = newMemory.value;
+          existing.confidence = newMemory.confidence;
+          existing.lastUpdated = new Date();
+          existing.extractedFrom = newMemory.extractedFrom;
+          updatedMemories.push(existing);
+        }
+      }
+    }
+
+    return {
+      extractedMemories: extractedMemories.filter(memory => 
+        !existingMemories.find(existing => existing.key === memory.key)
+      ),
+      updatedMemories,
+      memoryContext: result.memoryContext || ''
+    };
+
+  } catch (error) {
+    console.error('Error extracting user memories:', error);
+    return {
+      extractedMemories: [],
+      updatedMemories: [],
+      memoryContext: ''
+    };
+  }
+}
+
+// Build memory context for AI responses
+export function buildMemoryContext(memories: UserMemory[]): string {
+  if (memories.length === 0) return '';
+
+  const categorizedMemories = {
+    personal: memories.filter(m => m.memoryType === 'personal'),
+    academic: memories.filter(m => m.memoryType === 'academic'),
+    preference: memories.filter(m => m.memoryType === 'preference'),
+    context: memories.filter(m => m.memoryType === 'context'),
+    fact: memories.filter(m => m.memoryType === 'fact')
+  };
+
+  let memoryContext = '\n\nWhat I know about this user:';
+  
+  if (categorizedMemories.personal.length > 0) {
+    memoryContext += '\nPersonal: ' + categorizedMemories.personal.map(m => `${m.key}: ${m.value}`).join(', ');
+  }
+  
+  if (categorizedMemories.academic.length > 0) {
+    memoryContext += '\nAcademic: ' + categorizedMemories.academic.map(m => `${m.key}: ${m.value}`).join(', ');
+  }
+  
+  if (categorizedMemories.preference.length > 0) {
+    memoryContext += '\nPreferences: ' + categorizedMemories.preference.map(m => `${m.key}: ${m.value}`).join(', ');
+  }
+  
+  if (categorizedMemories.context.length > 0) {
+    memoryContext += '\nContext: ' + categorizedMemories.context.map(m => `${m.key}: ${m.value}`).join(', ');
+  }
+  
+  if (categorizedMemories.fact.length > 0) {
+    memoryContext += '\nFacts: ' + categorizedMemories.fact.map(m => `${m.key}: ${m.value}`).join(', ');
+  }
+
+  return memoryContext;
 } 
