@@ -32,7 +32,7 @@ const handler = async (
 
   if (req.method === 'POST') {
     try {
-      const { content } = req.body;
+      const { content, type } = req.body;
 
       console.log('🎓 Training request from user:', req.user.uid, 'for bot:', botId);
 
@@ -78,6 +78,64 @@ const handler = async (
         }
       }
 
+      // Handle image training
+      if (type === 'image') {
+        try {
+          let imageData;
+          try {
+            imageData = JSON.parse(content);
+          } catch (e) {
+            return res.status(400).json({
+              success: false,
+              error: 'Invalid image data format',
+              timestamp: new Date()
+            });
+          }
+
+          // Generate embedding for the image description
+          const embeddingResponse = await openai.embeddings.create({
+            model: "text-embedding-3-small",
+            input: imageData.imageDescription || imageData.content || 'Image'
+          });
+
+          const embedding = embeddingResponse.data[0].embedding;
+
+          // Create image training entry
+          const trainingEntry: TrainingEntry = {
+            id: nanoid(12),
+            type: "image",
+            imageUrl: imageData.imageUrl,
+            imageDescription: imageData.imageDescription,
+            imageAltText: imageData.imageAltText || imageData.imageDescription,
+            embedding,
+            source: "image-upload",
+            keywords: [imageData.imageDescription || 'image'],
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+
+          // Save to Firestore
+          await serverDb.saveTrainingEntry(botId, trainingEntry);
+
+          console.log(`✅ Saved image training entry ${trainingEntry.id} for bot ${botId}`);
+
+          return res.status(200).json({
+            success: true,
+            savedCount: 1,
+            timestamp: new Date()
+          });
+
+        } catch (error) {
+          console.error('Error processing image training entry:', error);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to process image training entry',
+            timestamp: new Date()
+          });
+        }
+      }
+
+      // Handle text training (existing logic)
       // Enhance the training message with AI
       const enhancement = await enhanceTrainingMessage(content.trim(), bot.name);
       

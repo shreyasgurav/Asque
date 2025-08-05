@@ -60,6 +60,9 @@ export default function TrainBotPage() {
   const [trainingInput, setTrainingInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showMemoryBank, setShowMemoryBank] = useState(true)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imageDescription, setImageDescription] = useState("")
+  const [isImageUploading, setIsImageUploading] = useState(false)
   const [botResponses, setBotResponses] = useState<{ [messageId: string]: string }>({})
   const [isTyping, setIsTyping] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -290,6 +293,79 @@ export default function TrainBotPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmitTraining(e)
+    }
+  }
+
+  const handleImageUpload = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedImage || !imageDescription.trim()) return
+
+    setIsImageUploading(true)
+    try {
+      // Convert image to base64
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const base64Data = reader.result as string
+        const imageData = base64Data.split(',')[1] // Remove data:image/...;base64, prefix
+
+        // Upload image
+        const uploadResponse = await authenticatedFetch('/api/upload', {
+          method: 'POST',
+          body: JSON.stringify({
+            imageData,
+            fileName: selectedImage.name,
+            fileType: selectedImage.type
+          })
+        })
+
+        const uploadResult = await uploadResponse.json()
+        
+        if (uploadResult.success) {
+          // Add image as training data
+          const trainingData = {
+            type: 'image',
+            imageUrl: uploadResult.data.imageUrl,
+            imageDescription: imageDescription.trim(),
+            imageAltText: `Image: ${imageDescription.trim()}`,
+            content: imageDescription.trim()
+          }
+
+          const response = await authenticatedFetch(`/api/bots/${botId}/training`, {
+            method: 'POST',
+            body: JSON.stringify({
+              content: JSON.stringify(trainingData),
+              type: 'image'
+            })
+          })
+
+          const result = await response.json()
+          
+          if (result.success) {
+            setSuccessMessage('Image uploaded successfully!')
+            setSelectedImage(null)
+            setImageDescription('')
+            fetchTrainingEntries()
+          } else {
+            setError(result.error || 'Failed to upload image')
+          }
+        } else {
+          setError(uploadResult.error || 'Failed to upload image')
+        }
+      }
+      reader.readAsDataURL(selectedImage)
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      setError('Failed to upload image')
+    } finally {
+      setIsImageUploading(false)
+    }
+  }
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedImage(file)
+      setImageDescription(file.name) // Auto-fill description with filename
     }
   }
 
@@ -569,7 +645,23 @@ export default function TrainBotPage() {
                       rows={1}
                       disabled={isSubmitting}
                     />
-                    <div className="pb-0">
+                    <div className="pb-0 flex gap-2">
+                      {/* Image Upload Button */}
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                          disabled={isSubmitting}
+                        />
+                        <div className="p-3 rounded-full bg-slate-700/50 hover:bg-slate-700/70 transition-colors text-slate-300 hover:text-white">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      </label>
+                      
                       <button
                         type="submit"
                         disabled={!trainingInput.trim() || isSubmitting}
@@ -591,6 +683,66 @@ export default function TrainBotPage() {
                     </div>
                   </div>
                 </form>
+                {/* Image Upload Form */}
+                {selectedImage && (
+                  <div className="mt-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/50">
+                    <div className="flex items-start gap-4">
+                      <div className="w-20 h-20 bg-slate-700/50 rounded-lg overflow-hidden flex-shrink-0">
+                        <img
+                          src={URL.createObjectURL(selectedImage)}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-300 mb-1">
+                            Image Description
+                          </label>
+                          <input
+                            type="text"
+                            value={imageDescription}
+                            onChange={(e) => setImageDescription(e.target.value)}
+                            placeholder="e.g., Mess timetable for this week"
+                            className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleImageUpload}
+                            disabled={!imageDescription.trim() || isImageUploading}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              imageDescription.trim() && !isImageUploading
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                            }`}
+                          >
+                            {isImageUploading ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                Uploading...
+                              </div>
+                            ) : (
+                              'Upload Image'
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedImage(null)
+                              setImageDescription('')
+                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="text-center text-xs text-[var(--muted-foreground)] mt-2">
                   Press Enter to send, Shift+Enter for new line • {trainingInput.length}/2000
                 </div>
@@ -641,9 +793,15 @@ export default function TrainBotPage() {
                         <div className="mb-3">
                           <Badge
                             variant="secondary"
-                            className="bg-blue-600/20 text-blue-300 border-blue-600/30"
+                            className={`${
+                              entry.type === 'qa' 
+                                ? 'bg-blue-600/20 text-blue-300 border-blue-600/30'
+                                : entry.type === 'image'
+                                ? 'bg-purple-600/20 text-purple-300 border-purple-600/30'
+                                : 'bg-green-600/20 text-green-300 border-green-600/30'
+                            }`}
                           >
-                            {entry.type === 'qa' ? 'Q&A' : 'Context'}
+                            {entry.type === 'qa' ? 'Q&A' : entry.type === 'image' ? '📷 Image' : 'Context'}
                           </Badge>
                         </div>
                         
@@ -655,6 +813,21 @@ export default function TrainBotPage() {
                             <div className="text-sm text-slate-400">
                               <span className="font-semibold text-green-400">A:</span> {entry.answer}
                             </div>
+                          </div>
+                        ) : entry.type === 'image' ? (
+                          <div className="space-y-2">
+                            <div className="text-sm text-slate-300">
+                              <span className="font-semibold text-purple-400">📷 Image:</span> {entry.imageDescription}
+                            </div>
+                            {entry.imageUrl && (
+                              <div className="w-full h-20 bg-slate-700/50 rounded-lg overflow-hidden">
+                                <img
+                                  src={entry.imageUrl}
+                                  alt={entry.imageDescription}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-sm text-slate-300 line-clamp-3 leading-relaxed">

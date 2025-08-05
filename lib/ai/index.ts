@@ -6,6 +6,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+console.log('🔍 OpenAI client initialized:', {
+  hasApiKey: !!process.env.OPENAI_API_KEY,
+  apiKeyLength: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0
+});
+
 // Input sanitization for user messages
 export function sanitizeUserInput(input: string): string {
   if (!input || typeof input !== 'string') {
@@ -31,10 +36,12 @@ export async function getEmbedding(text: string): Promise<number[]> {
       throw new Error('OpenAI API key not configured');
     }
     
+    console.log('🔍 Creating OpenAI embedding...');
     const response = await openai.embeddings.create({
       model: "text-embedding-3-small",
       input: text
     });
+    console.log('✅ OpenAI embedding created successfully');
     
     const embedding = response.data[0].embedding;
     console.log(`✅ Generated embedding with ${embedding.length} dimensions`);
@@ -82,21 +89,49 @@ export async function searchTrainingEntriesWithEmbeddings(
     }
 
     // Generate embedding for user query
+    console.log('🔍 Generating embedding for user query...');
     const queryEmbedding = await getEmbedding(userQuery);
+    console.log('✅ Embedding generated successfully');
 
     // Calculate similarity for each training entry
+    console.log('🔍 Calculating similarities...');
     const scoredEntries = trainingEntries.map(entry => {
       const similarity = calculateCosineSimilarity(queryEmbedding, entry.embedding);
       return { ...entry, similarity };
     });
+    console.log('✅ Similarities calculated successfully');
 
     // Sort by similarity (highest first)
     scoredEntries.sort((a, b) => b.similarity - a.similarity);
+
+    // Boost image entries for image-related queries
+    const imageKeywords = ['menu', 'image', 'photo', 'picture', 'show', 'see', 'look', 'display'];
+    const isImageQuery = imageKeywords.some(keyword => 
+      userQuery.toLowerCase().includes(keyword.toLowerCase())
+    );
+
+    if (isImageQuery) {
+      // Boost image entries by increasing their similarity score
+      scoredEntries.forEach(entry => {
+        if (entry.type === 'image') {
+          entry.similarity += 0.1; // Boost image entries
+        }
+      });
+      // Re-sort after boosting
+      scoredEntries.sort((a, b) => b.similarity - a.similarity);
+    }
 
     // Try with primary threshold first
     let relevantEntries = scoredEntries
       .filter(entry => entry.similarity >= similarityThreshold)
       .slice(0, maxResults);
+
+    // Always include image entry for image-related queries
+    const imageEntry = scoredEntries.find(entry => entry.type === 'image');
+    if (isImageQuery && imageEntry && !relevantEntries.some(e => e.id === imageEntry.id)) {
+      relevantEntries.unshift(imageEntry);
+      relevantEntries = relevantEntries.slice(0, maxResults);
+    }
 
     // If no results, try with lower threshold (fallback)
     if (relevantEntries.length === 0) {
@@ -169,6 +204,7 @@ export async function sendToOpenAI(
   model: string = "gpt-3.5-turbo"
 ): Promise<string> {
   try {
+    console.log('🔍 Creating OpenAI completion...');
     const response = await openai.chat.completions.create({
       model,
       messages: [
@@ -178,10 +214,11 @@ export async function sendToOpenAI(
       temperature: 0.7,
       max_tokens: 300
     });
+    console.log('✅ OpenAI completion created successfully');
 
     return response.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
   } catch (error) {
-    console.error('Error sending to OpenAI:', error);
+    console.error('❌ Error sending to OpenAI:', error);
     return "I'm sorry, I'm having trouble processing your request right now.";
   }
 }
@@ -199,6 +236,11 @@ export async function handleChatWithEmbeddings(
   confidence: number;
   usedTrainingIds: string[];
   wasAnswered: boolean;
+  images?: Array<{
+    url: string;
+    description: string;
+    altText: string;
+  }>;
 }> {
   try {
     console.log(`🔍 Searching for: "${userMessage}"`);
@@ -206,11 +248,17 @@ export async function handleChatWithEmbeddings(
     console.log(`💬 Conversation history: ${conversationHistory.length} messages`);
     
     // Filter out entries without embeddings
+    console.log('🔍 Checking training entries...');
+    console.log(`📚 Total training entries: ${trainingEntries.length}`);
+    
     const validEntries = trainingEntries.filter(entry => 
       entry.embedding && 
       Array.isArray(entry.embedding) && 
       entry.embedding.length > 0
     );
+    
+    console.log(`✅ Valid entries with embeddings: ${validEntries.length}`);
+    console.log(`❌ Invalid entries: ${trainingEntries.length - validEntries.length}`);
     
     if (validEntries.length === 0) {
       console.log('❌ No valid training entries with embeddings found');
@@ -225,7 +273,9 @@ export async function handleChatWithEmbeddings(
     console.log(`✅ Found ${validEntries.length} valid training entries`);
 
     // Search for relevant training entries
+    console.log('🔍 Calling searchTrainingEntriesWithEmbeddings...');
     const searchResult = await searchTrainingEntriesWithEmbeddings(userMessage, validEntries);
+    console.log('✅ searchTrainingEntriesWithEmbeddings completed');
     
     if (searchResult.entries.length === 0) {
       console.log('❌ No relevant entries found in search');
@@ -238,19 +288,31 @@ export async function handleChatWithEmbeddings(
     }
 
     console.log(`✅ Found ${searchResult.entries.length} relevant entries`);
+    console.log('🔍 Search result entries:', searchResult.entries.map(entry => ({
+      id: entry.id,
+      type: entry.type,
+      similarity: entry.similarity,
+      hasImage: !!entry.imageUrl
+    })));
 
     // Build context from relevant entries
     const contextQA = searchResult.entries.map(entry => ({
       question: entry.question || '',
       answer: entry.answer || entry.content || entry.contextBlock || '',
-      type: entry.type || 'qa'
+      type: entry.type || 'qa',
+      imageUrl: entry.imageUrl,
+      imageDescription: entry.imageDescription
     }));
 
     // Build system prompt with conversation history, user context, and memory
+    console.log('🔍 Building system prompt...');
     const systemPrompt = buildSystemPromptWithContext(userMessage, contextQA, conversationHistory, userContext, userMemoryContext);
+    console.log('✅ System prompt built successfully');
 
     // Get response from OpenAI
+    console.log('🔍 Sending to OpenAI...');
     const response = await sendToOpenAI(systemPrompt, userMessage);
+    console.log('✅ OpenAI response received');
 
     // Get IDs of used training entries
     const usedTrainingIds = searchResult.entries.map(entry => entry.id);
@@ -261,12 +323,25 @@ export async function handleChatWithEmbeddings(
     const MIN_CONFIDENCE_THRESHOLD = 0.6;
     const wasAnswered = searchResult.confidence >= MIN_CONFIDENCE_THRESHOLD;
 
-    return {
+    // Check if any relevant entries contain images
+    const imageEntries = searchResult.entries.filter(entry => entry.type === 'image' && entry.imageUrl);
+    
+    // Only return the first (most relevant) image to avoid showing multiple similar images
+    const firstImage = imageEntries.length > 0 ? {
+      url: imageEntries[0].imageUrl,
+      description: imageEntries[0].imageDescription || 'Image',
+      altText: imageEntries[0].imageAltText || 'Image'
+    } : null;
+    
+    const result = {
       response,
       confidence: searchResult.confidence,
       usedTrainingIds,
-      wasAnswered
+      wasAnswered,
+      images: firstImage ? [firstImage] : []
     };
+    
+    return result;
 
   } catch (error) {
     console.error('Error in handleChatWithEmbeddings:', error);
@@ -274,7 +349,8 @@ export async function handleChatWithEmbeddings(
       response: "I'm sorry, I encountered an error while processing your request. Please try again.",
       confidence: 0,
       usedTrainingIds: [],
-      wasAnswered: false
+      wasAnswered: false,
+      images: []
     };
   }
 }
@@ -282,7 +358,7 @@ export async function handleChatWithEmbeddings(
 // New function to build system prompt with conversation history, user context, and memory
 export function buildSystemPromptWithContext(
   userMessage: string, 
-  contextQA: { question: string; answer: string; type: string }[],
+  contextQA: { question: string; answer: string; type: string; imageUrl?: string; imageDescription?: string }[],
   conversationHistory: any[] = [],
   userContext?: any,
   userMemoryContext?: string
@@ -297,6 +373,9 @@ Unfortunately, I don't have specific information about this topic. Please respon
     if (item.type === 'qa') {
       return `Q: ${item.question || ''}
 A: ${item.answer || ''}`;
+    } else if (item.type === 'image') {
+      return `Image Information: ${item.imageDescription || 'An image'}
+Note: This is an image that should be displayed to the user when relevant.`;
     } else {
       return `Information: ${item.answer || ''}`;
     }
@@ -336,7 +415,9 @@ ${contextSection}${conversationSection}${userContextSection}${userMemoryContext 
 Now answer this question:
 "${userMessage}"
 
-Provide a helpful, accurate response based on the information above. Be conversational and natural. If the user is asking a follow-up question, make sure to reference the context from the previous conversation. Use the current time and location context to provide relevant responses when appropriate. Use what you know about the user to personalize your response (e.g., if you know their name, department, class, etc.).`;
+Provide a helpful, accurate response based on the information above. Be conversational and natural. If the user is asking a follow-up question, make sure to reference the context from the previous conversation. Use the current time and location context to provide relevant responses when appropriate. Use what you know about the user to personalize your response (e.g., if you know their name, department, class, etc.).
+
+IMPORTANT: If there are images in the context that are relevant to the user's question, mention them naturally in your response (e.g., "Here's the mess menu" or "I can show you the timetable"), but DO NOT include any URLs or technical image references in your text response. The system will automatically display the images when appropriate.`;
 }
 
 // Extract keywords and context from training message

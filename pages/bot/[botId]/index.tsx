@@ -166,6 +166,29 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
                   <div className="whitespace-pre-wrap break-words">
                     {renderTextWithLinks(message.content)}
                   </div>
+                  
+                  {/* Display images if present */}
+                  {message.images && message.images.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {message.images.map((image, index) => (
+                        <div key={index} className="rounded-lg overflow-hidden">
+                          <img
+                            src={image.url}
+                            alt={image.altText}
+                            className="max-w-full h-auto rounded-lg shadow-md"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                          {image.description && (
+                            <p className="text-xs text-slate-400 mt-1 italic">
+                              {image.description}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {message.type === 'user' && (
@@ -587,6 +610,7 @@ export default function PublicBotPage() {
           type: 'bot',
           content: result.data.message,
           timestamp: new Date(),
+          images: result.data.images,
           metadata: {
             confidence: result.data.confidence,
             responseTime: result.data.responseTime

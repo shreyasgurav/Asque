@@ -79,7 +79,7 @@ export interface Bot {
 // New Training Data Structure
 export interface TrainingEntry {
   id: string;
-  type: "qa" | "context";
+  type: "qa" | "context" | "image";
   
   // For Q&A entries
   question?: string;
@@ -88,9 +88,14 @@ export interface TrainingEntry {
   // For context entries
   contextBlock?: string;
   
+  // For image entries
+  imageUrl?: string;
+  imageDescription?: string;
+  imageAltText?: string;
+  
   // Embedding and metadata
   embedding: number[]; // 1536-dimensional vector
-  source: "user-input" | "file" | "web-paste";
+  source: "user-input" | "file" | "web-paste" | "image-upload";
   keywords?: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -116,6 +121,11 @@ export interface ChatMessage {
   type: 'user' | 'bot' | 'system';
   content: string;
   timestamp: Date;
+  images?: {
+    url: string;
+    description: string;
+    altText: string;
+  }[];
   metadata?: {
     confidence?: number;
     responseTime?: number;
@@ -192,6 +202,11 @@ export interface ChatWithBotResponse extends ApiResponse {
     responseTime: number;
     sessionId: string;
     wasAnswered: boolean;
+    images?: {
+      url: string;
+      description: string;
+      altText: string;
+    }[];
   };
 }
 

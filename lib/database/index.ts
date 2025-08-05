@@ -239,7 +239,9 @@ export const serverDb = {
       throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
     try {
-      await adminDb.collection('chatSessions').doc(sessionData.id).set(sessionData);
+      // Remove undefined fields from sessionData
+      const cleanSessionData = JSON.parse(JSON.stringify(sessionData));
+      await adminDb.collection('chatSessions').doc(sessionData.id).set(cleanSessionData);
       return sessionData;
     } catch (error) {
       console.error('Error saving chat session to Firebase:', error);
@@ -252,7 +254,9 @@ export const serverDb = {
       throw new Error('Firebase Admin is not initialized. Please check your environment variables.');
     }
     try {
-      await adminDb.collection('chatSessions').doc(sessionData.id).set(sessionData);
+      // Remove undefined fields from sessionData
+      const cleanSessionData = JSON.parse(JSON.stringify(sessionData));
+      await adminDb.collection('chatSessions').doc(sessionData.id).set(cleanSessionData);
       return sessionData;
     } catch (error) {
       console.error('Error updating chat session in Firebase:', error);

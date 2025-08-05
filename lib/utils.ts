@@ -127,32 +127,44 @@ export async function getUserContext(): Promise<UserContext | null> {
     const now = new Date();
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     
-    // Get location using browser geolocation
-    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation not supported'));
-        return;
-      }
-      
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000 // 5 minutes cache
+    // Get location using browser geolocation (optional)
+    let position: GeolocationPosition | null = null;
+    try {
+      position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('Geolocation not supported'));
+          return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false, // Use low accuracy to avoid permission issues
+          timeout: 5000, // Shorter timeout
+          maximumAge: 300000 // 5 minutes cache
+        });
       });
-    });
-
-    const { latitude, longitude } = position.coords;
-    
-    // Reverse geocoding to get city and country
-    const locationResponse = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-    );
-    
-    if (!locationResponse.ok) {
-      throw new Error('Failed to get location data');
+    } catch (geoError) {
+      console.log('Geolocation failed, using fallback:', geoError);
+      // Continue without geolocation
     }
+
+    let locationData: any = null;
     
-    const locationData = await locationResponse.json();
+    if (position) {
+      const { latitude, longitude } = position.coords;
+      
+      // Reverse geocoding to get city and country
+      try {
+        const locationResponse = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+        );
+        
+        if (locationResponse.ok) {
+          locationData = await locationResponse.json();
+        }
+      } catch (locationError) {
+        console.log('Reverse geocoding failed:', locationError);
+      }
+    }
     
     // Determine if it's daytime (6 AM to 6 PM)
     const hour = now.getHours();
@@ -176,13 +188,13 @@ export async function getUserContext(): Promise<UserContext | null> {
     
     return {
       location: {
-        city: locationData.city || locationData.locality || 'Unknown City',
-        country: locationData.countryName || 'Unknown Country',
+        city: locationData?.city || locationData?.locality || 'Unknown City',
+        country: locationData?.countryName || 'Unknown Country',
         timezone,
-        coordinates: {
-          lat: latitude,
-          lng: longitude
-        }
+        coordinates: position ? {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        } : undefined
       },
       time: {
         currentTime: now,

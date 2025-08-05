@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 console.log('🔍 Firebase Admin credentials check:', {
   hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
@@ -11,6 +12,7 @@ console.log('🔍 Firebase Admin credentials check:', {
 });
 
 let adminDb: FirebaseFirestore.Firestore | null = null;
+let adminStorage: any = null;
 
 // Test Firebase connection
 async function testFirebaseConnection(db: FirebaseFirestore.Firestore) {
@@ -28,6 +30,7 @@ try {
   if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
     console.log('🚫 Firebase Admin disabled - missing credentials, using mock data for development');
     adminDb = null;
+    adminStorage = null;
   } else {
     // Initialize Firebase Admin if not already initialized
     if (getApps().length === 0) {
@@ -61,12 +64,14 @@ try {
       });
 
       adminDb = getFirestore(app);
-      console.log('✅ Firebase Admin initialized successfully');
+      adminStorage = getStorage(app);
+      console.log('✅ Firebase Admin initialized successfully with Firestore and Storage');
       
       // Test the connection asynchronously
       testFirebaseConnection(adminDb);
     } else {
       adminDb = getFirestore();
+      adminStorage = getStorage();
       console.log('✅ Firebase Admin already initialized');
     }
   }
@@ -74,6 +79,7 @@ try {
   console.error('❌ Firebase Admin initialization failed:', error instanceof Error ? error.message : String(error));
   console.log('🚫 Firebase Admin disabled - using mock data for development');
   adminDb = null;
+  adminStorage = null;
 }
 
-export { adminDb }; 
+export { adminDb, adminStorage }; 
