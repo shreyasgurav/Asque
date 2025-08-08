@@ -432,7 +432,8 @@ export const serverDb = {
       
       const entries: any[] = [];
       querySnapshot.forEach((doc: any) => {
-        entries.push({ id: doc.id, ...doc.data() });
+        const entry = { id: doc.id, ...doc.data() };
+        entries.push(entry);
       });
       
       return entries;

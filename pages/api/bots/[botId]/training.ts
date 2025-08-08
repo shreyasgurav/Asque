@@ -34,8 +34,6 @@ const handler = async (
     try {
       const { content, type } = req.body;
 
-      console.log('🎓 Training request from user:', req.user.uid, 'for bot:', botId);
-
       if (!content || !content.trim()) {
         return res.status(400).json({
           success: false,
@@ -55,21 +53,13 @@ const handler = async (
       }
 
       // Check ownership
-      console.log('🔍 Training ownership check:');
-      console.log('  Bot ownerId:', bot.ownerId);
-      console.log('  User uid:', req.user.uid);
-      console.log('  User phone:', req.user.phoneNumber);
-      
       if (bot.ownerId !== req.user.uid) {
         // Try fallback with phone number
         if (req.user.phoneNumber && bot.ownerPhoneNumber === req.user.phoneNumber) {
-          console.log('✅ Training access granted via phone number fallback');
           // Update the bot's ownerId to the current user ID for future consistency
           bot.ownerId = req.user.uid;
           await serverDb.updateBot(bot);
         } else {
-          console.log('❌ Training access denied: User does not own this bot');
-          console.log('  Bot ownerPhoneNumber:', bot.ownerPhoneNumber);
           return res.status(403).json({
             success: false,
             error: 'Access denied: You do not own this bot',

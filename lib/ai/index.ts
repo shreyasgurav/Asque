@@ -136,7 +136,7 @@ export async function searchTrainingEntriesWithEmbeddings(
     // If no results, try with lower threshold (fallback)
     if (relevantEntries.length === 0) {
       console.log(`🔍 No results with threshold ${similarityThreshold}, trying fallback...`);
-      const fallbackThreshold = 0.3; // Much lower threshold
+      const fallbackThreshold = 0.4; // Higher fallback threshold
       relevantEntries = scoredEntries
         .filter(entry => entry.similarity >= fallbackThreshold)
         .slice(0, maxResults);
@@ -146,13 +146,9 @@ export async function searchTrainingEntriesWithEmbeddings(
       }
     }
 
-    // If still no results, take top 2 entries regardless of threshold
+    // If still no results, don't return any entries (let the AI respond with "no information")
     if (relevantEntries.length === 0) {
-      console.log(`🔍 No results with fallback, taking top entries...`);
-      relevantEntries = scoredEntries.slice(0, 2);
-      if (relevantEntries.length > 0) {
-        console.log(`✅ Using top ${relevantEntries.length} entries with lower confidence`);
-      }
+      console.log(`🔍 No results with fallback, returning empty entries`);
     }
 
     // Calculate overall confidence based on top match

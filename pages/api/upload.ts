@@ -83,17 +83,11 @@ const handler = async (
         hasStorageBucket: !!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
       });
       
-      // For now, return a mock response for testing
-      return res.status(200).json({
-        success: true,
-        data: {
-          imageUrl: 'https://via.placeholder.com/300x200?text=Mock+Image',
-          fileName,
-          fileType,
-          fileSize: base64Size
-        },
-        timestamp: new Date(),
-        note: 'Mock response - Firebase Storage not configured'
+      // Return error when Firebase Storage is not configured
+      return res.status(500).json({
+        success: false,
+        error: 'Firebase Storage is not properly configured. Please check your environment variables.',
+        timestamp: new Date()
       });
     }
     
@@ -111,12 +105,21 @@ const handler = async (
     try {
       const [exists] = await bucket.exists();
       if (!exists) {
-        throw new Error(`Storage bucket '${bucketName}' does not exist or is not accessible`);
+        console.warn(`⚠️ Storage bucket '${bucketName}' does not exist`);
+        return res.status(500).json({
+          success: false,
+          error: `Storage bucket '${bucketName}' does not exist. Please check your Firebase configuration.`,
+          timestamp: new Date()
+        });
       }
       console.log('✅ Storage bucket exists and is accessible');
     } catch (bucketError) {
       console.error('❌ Bucket access error:', bucketError);
-      throw new Error(`Cannot access storage bucket: ${bucketError instanceof Error ? bucketError.message : 'Unknown error'}`);
+      return res.status(500).json({
+        success: false,
+        error: 'Unable to access Firebase Storage bucket. Please check your configuration.',
+        timestamp: new Date()
+      });
     }
     
     const file = bucket.file(`images/${uniqueFileName}`);
@@ -136,11 +139,11 @@ const handler = async (
       await file.save(buffer, {
         metadata: {
           contentType: fileType,
-                  metadata: {
-          uploadedBy: req.user.uid,
-          originalName: fileName,
-          uploadedAt: new Date().toISOString()
-        }
+          metadata: {
+            uploadedBy: req.user.uid,
+            originalName: fileName,
+            uploadedAt: new Date().toISOString()
+          }
         }
       });
       console.log('✅ File saved to Firebase Storage successfully');
@@ -153,15 +156,54 @@ const handler = async (
     try {
       await file.makePublic();
       console.log('✅ File made public successfully');
+      
+      // Verify public access
+      const [metadata] = await file.getMetadata();
+      console.log('🔍 File metadata:', {
+        public: metadata.public,
+        mediaLink: metadata.mediaLink,
+        selfLink: metadata.selfLink
+      });
+      
     } catch (publicError) {
       console.error('❌ Firebase Storage public access error:', publicError);
-      throw new Error(`Failed to make file public: ${publicError instanceof Error ? publicError.message : 'Unknown error'}`);
+      // Try alternative method to make file public
+      try {
+        await file.setMetadata({
+          metadata: {
+            public: true
+          }
+        });
+        console.log('✅ File made public via alternative method');
+      } catch (altError) {
+        console.error('❌ Alternative public access method failed:', altError);
+        // Continue with the process even if public access fails
+        console.log('⚠️ Warning: Could not make file public, but continuing...');
+      }
     }
 
     // Get the public URL
     const imageUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
 
     console.log(`✅ Image uploaded to Firebase Storage: ${imageUrl}`);
+    
+    // Test the URL accessibility
+    try {
+      const testResponse = await fetch(imageUrl, { method: 'HEAD' });
+      console.log(`🔍 Image URL test: ${testResponse.status} ${testResponse.statusText}`);
+      if (testResponse.status !== 200) {
+        console.warn(`⚠️ Image URL may not be accessible: ${testResponse.status}`);
+        return res.status(500).json({
+          success: false,
+          error: 'Uploaded image is not publicly accessible. Please check your Firebase Storage configuration.',
+          timestamp: new Date()
+        });
+      }
+    } catch (testError) {
+      console.warn('⚠️ Could not test image URL accessibility:', testError);
+      // Continue with the upload even if testing fails
+      console.log('⚠️ Proceeding with upload despite URL test failure');
+    }
 
     // Store image metadata in database
     const imageMetadata = {
@@ -232,4 +274,4 @@ export const config = {
       sizeLimit: '10mb',
     },
   },
-}; 
+};

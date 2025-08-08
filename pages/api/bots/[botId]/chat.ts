@@ -154,7 +154,12 @@ async function updateChatSession(
   botResponse: string, 
   confidence: number, 
   responseTime: number,
-  usedTrainingIds: string[] = []
+  usedTrainingIds: string[] = [],
+  images?: Array<{
+    url: string;
+    description: string;
+    altText: string;
+  }>
 ): Promise<void> {
   const userMsg: any = {
     id: `msg_${Date.now()}_user`,
@@ -168,6 +173,7 @@ async function updateChatSession(
     type: 'bot',
     content: botResponse,
     timestamp: new Date(),
+    images: images || [], // Store images in the bot message
     metadata: {
       confidence,
       responseTime,
@@ -175,6 +181,8 @@ async function updateChatSession(
       usedTrainingIds
     }
   };
+  
+
   
   session.messages.push(userMsg, botMsg);
   session.messageCount += 2;
@@ -218,45 +226,30 @@ const handler = async (
   }
 
   try {
-    console.log('🔧 Debug: Environment check');
-    console.log(`- OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'Set' : 'Not set'}`);
-    console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
-    console.log('🔧 Debug: Request details');
-    console.log(`- Bot ID from URL: ${botId}`);
-    console.log(`- Request body:`, req.body);
-    console.log(`- Request method: ${req.method}`);
-    console.log(`- User agent: ${req.headers['user-agent']}`);
-    
     const startTime = Date.now();
     const { message, sessionId, userContext: requestUserContext } = req.body as ChatWithBotRequest;
     const finalSessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const userAgent = req.headers['user-agent'] as string;
 
     // Validate message
-    console.log('🔧 Debug: Validating message:', message);
     const messageValidation = validateChatMessage(message);
     if (!messageValidation.isValid) {
-      console.log('❌ Message validation failed:', messageValidation.errors);
       return res.status(400).json({
         success: false,
         error: messageValidation.errors.join(', '),
         timestamp: new Date()
       });
     }
-    console.log('✅ Message validation passed');
 
     // Validate session ID
-    console.log('🔧 Debug: Validating session ID:', finalSessionId);
     const sessionIdValidation = validateSessionId(finalSessionId);
     if (!sessionIdValidation.isValid) {
-      console.log('❌ Session ID validation failed:', sessionIdValidation.errors);
       return res.status(400).json({
         success: false,
         error: sessionIdValidation.errors.join(', '),
         timestamp: new Date()
       });
     }
-    console.log('✅ Session ID validation passed');
 
     // Check for authentication (optional for chat)
     let authUser = null;
@@ -265,9 +258,8 @@ const handler = async (
       try {
         const token = authHeader.substring(7);
         authUser = await verifyAuthToken(token);
-        console.log('🔐 Authenticated chat request from user:', authUser.uid);
       } catch (error) {
-        console.log('⚠️ Invalid auth token in chat request, proceeding as anonymous');
+        // console.log('⚠️ Invalid auth token in chat request, proceeding as anonymous');
       }
     }
 
@@ -275,7 +267,6 @@ const handler = async (
     let bot = await serverDb.getBot(botId as string);
     
     if (!bot) {
-      console.log('❌ Bot not found:', botId);
       return res.status(404).json({
         success: false,
         error: 'Bot not found',
@@ -315,9 +306,7 @@ const handler = async (
       wasAnswered = true;
     } else {
       // Get training entries for embedding search
-      console.log(`🔍 Fetching training entries for bot ${botId}...`);
       const trainingEntries = await serverDb.getTrainingEntries(botId as string);
-      console.log(`📚 Found ${trainingEntries.length} training entries`);
 
       if (trainingEntries.length === 0) {
         // No training data available
@@ -326,8 +315,6 @@ const handler = async (
         wasAnswered = false;
               } else {
           try {
-            console.log(`🔍 Starting embedding search for: "${message.trim()}"`);
-            
             // Get user memories for personalization (simplified)
             const userIdentifier = authUser?.uid || finalSessionId;
             let userMemories: any[] = [];
@@ -336,9 +323,8 @@ const handler = async (
             try {
               userMemories = await serverDb.getUserMemories(userIdentifier, botId as string);
               userMemoryContext = buildMemoryContext(userMemories);
-              console.log(`🧠 Loaded ${userMemories.length} memories for user ${userIdentifier}`);
             } catch (error) {
-              console.log('Could not load user memories:', error);
+              // console.log('Could not load user memories:', error);
             }
 
            // Use user context from request or fallback to server-generated context (simplified)
@@ -365,7 +351,6 @@ const handler = async (
            }
 
                      // Use embedding-based search with conversation history, user context, and memory
-           console.log('🔍 Calling handleChatWithEmbeddings...');
            chatResult = await handleChatWithEmbeddings(
              message.trim(),
              botId as string,
@@ -374,14 +359,11 @@ const handler = async (
              userContext, // Pass user context
              userMemoryContext // Pass user memory context
            );
-           console.log('✅ handleChatWithEmbeddings completed');
 
           botResponse = chatResult.response;
           confidence = chatResult.confidence;
           wasAnswered = chatResult.wasAnswered;
           usedTrainingIds = chatResult.usedTrainingIds;
-          
-          console.log(`✅ Chat result: ${wasAnswered ? 'Answered' : 'Not answered'}, Confidence: ${confidence.toFixed(3)}`);
           
           // Extract and save user memories from this conversation (temporarily disabled)
           /*
@@ -407,15 +389,15 @@ const handler = async (
             }
             
             if (memoryResult.extractedMemories.length > 0 || memoryResult.updatedMemories.length > 0) {
-              console.log(`🧠 Memory update: +${memoryResult.extractedMemories.length} new, ${memoryResult.updatedMemories.length} updated`);
+              // console.log(`🧠 Memory update: +${memoryResult.extractedMemories.length} new, ${memoryResult.updatedMemories.length} updated`);
             }
           } catch (memoryError) {
-            console.error('❌ Error processing user memories:', memoryError);
-            console.error('❌ Memory error details:', {
-              name: memoryError instanceof Error ? memoryError.name : 'Unknown',
-              message: memoryError instanceof Error ? memoryError.message : String(memoryError),
-              stack: memoryError instanceof Error ? memoryError.stack : undefined
-            });
+            // console.error('❌ Error processing user memories:', memoryError);
+            // console.error('❌ Memory error details:', {
+            //   name: memoryError instanceof Error ? memoryError.name : 'Unknown',
+            //   message: memoryError instanceof Error ? memoryError.message : String(memoryError),
+            //   stack: memoryError instanceof Error ? memoryError.stack : undefined
+            // });
           }
           */
           
@@ -446,12 +428,12 @@ const handler = async (
               };
             });
         } catch (chatError) {
-          console.error('❌ Error in handleChatWithEmbeddings:', chatError);
-          console.error('❌ Error details:', {
-            name: chatError instanceof Error ? chatError.name : 'Unknown',
-            message: chatError instanceof Error ? chatError.message : String(chatError),
-            stack: chatError instanceof Error ? chatError.stack : undefined
-          });
+          // console.error('❌ Error in handleChatWithEmbeddings:', chatError);
+          // console.error('❌ Error details:', {
+          //   name: chatError instanceof Error ? chatError.name : 'Unknown',
+          //   message: chatError instanceof Error ? chatError.message : String(chatError),
+          //   stack: chatError instanceof Error ? chatError.stack : undefined
+          // });
           // More specific error message
           botResponse = `I'm ${bot.name} and I'm having trouble processing your request right now. This might be due to a temporary issue with my AI processing. Please try again in a moment, or contact my creator if the problem persists.`;
           confidence = 0;
@@ -468,14 +450,16 @@ const handler = async (
     
     const responseTime = Date.now() - startTime;
 
-    // Update chat session with this interaction
-    await updateChatSession(chatSession, message.trim(), botResponse, confidence, responseTime, usedTrainingIds);
+    // Process images - use only actual uploaded images
+    let finalImages = (typeof chatResult !== 'undefined' && chatResult.images) ? chatResult.images : [];
+
+    // Update chat session with this interaction (including images)
+    await updateChatSession(chatSession, message.trim(), botResponse, confidence, responseTime, usedTrainingIds, finalImages);
 
     console.log(`💬 Bot ${botId} chat - Confidence: ${confidence.toFixed(2)}, Answered: ${wasAnswered}, Response time: ${responseTime}ms`);
-
-
+    console.log('🔍 Chat result images:', finalImages);
     
-    return res.status(200).json({
+    const responseData = {
       success: true,
       data: {
         message: botResponse,
@@ -483,10 +467,12 @@ const handler = async (
         responseTime,
         sessionId: finalSessionId,
         wasAnswered,
-        images: (typeof chatResult !== 'undefined' && chatResult.images) ? chatResult.images : []
+        images: finalImages
       },
       timestamp: new Date()
-    });
+    };
+    
+    return res.status(200).json(responseData);
 
   } catch (error: any) {
     console.error('❌ Error in bot chat:', error);

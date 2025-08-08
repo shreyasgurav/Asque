@@ -4,7 +4,6 @@ import { nanoid } from 'nanoid';
 import { Bot, ChatMessage, ChatWithBotRequest, ChatWithBotResponse, ChatSession, GetChatSessionResponse, UserChatSummary, GetUserChatsResponse } from '@/types';
 import { useAuth } from '@/components/auth/AuthContext';
 import { authenticatedFetch, signOut, formatPhoneNumber } from '@/lib/auth';
-import LoginPopup from '@/components/auth/LoginPopup';
 import Layout from '@/components/layout/Layout';
 import Loading from '@/components/ui/Loading';
 import TypingIndicator from '@/components/ui/TypingIndicator';
@@ -177,7 +176,23 @@ const ChatMainArea: React.FC<ChatMainAreaProps> = ({
                             alt={image.altText}
                             className="max-w-full h-auto rounded-lg shadow-md"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
+                              const imgElement = e.target as HTMLImageElement;
+                              imgElement.style.display = 'none';
+                              
+                              // Show error message
+                              const parent = imgElement.parentElement;
+                              if (parent) {
+                                const errorDiv = document.createElement('div');
+                                errorDiv.className = 'bg-slate-700/50 rounded-lg p-4 text-center';
+                                errorDiv.innerHTML = `
+                                  <p class="text-slate-400 text-sm mb-2">Image not available</p>
+                                  <p class="text-slate-500 text-xs mb-3">${image.description || 'No description'}</p>
+                                  <button class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="this.parentElement.remove();">
+                                    Dismiss
+                                  </button>
+                                `;
+                                parent.appendChild(errorDiv);
+                              }
                             }}
                           />
                           {image.description && (
@@ -287,7 +302,7 @@ export default function PublicBotPage() {
   const [currentSessionId, setCurrentSessionId] = useState(() =>
     typeof urlSessionId === 'string' ? urlSessionId : `session_${nanoid(12)}`
   );
-  const [showLoginPopup, setShowLoginPopup] = useState(false);
+
   const [messagesSent, setMessagesSent] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -502,6 +517,8 @@ export default function PublicBotPage() {
         setMessages(result.data.messages);
         setMessagesSent(result.data.messageCount);
         console.log(`✅ Loaded existing chat session with ${result.data.messages.length} messages`);
+        
+
       } else {
         console.log(`❌ Failed to load chat session ${sessionIdToLoad}, starting fresh`);
         // If session not found/accessible, ensure a new fresh session for this bot
@@ -563,17 +580,10 @@ export default function PublicBotPage() {
     setMessagesSent(prev => prev + 1);
 
     try {
-      console.log('🔧 Debug: Sending chat request');
-      console.log('  Bot ID from URL:', botId);
-      console.log('  Bot ID from object:', bot.id);
-      console.log('  Message:', userMessage.content);
-      console.log('  Session ID:', currentSessionId);
-      
       // Get user context for time/location awareness
       let userContext = null;
       try {
         userContext = await getUserContext();
-        console.log('📍 User context:', userContext);
       } catch (error) {
         console.log('⚠️ Could not get user context:', error);
       }
@@ -596,12 +606,6 @@ export default function PublicBotPage() {
         body: JSON.stringify(requestData)
       });
 
-      console.log('🔧 Debug: Response status:', response.status);
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Chat API error:', errorText);
-      }
-
       const result: ChatWithBotResponse = await response.json();
 
       if (result.success && result.data) {
@@ -616,6 +620,7 @@ export default function PublicBotPage() {
             responseTime: result.data.responseTime
           }
         };
+        
         setMessages(prev => [...prev, botMessage]);
         if (isAuthenticated) {
           fetchPastChats(); // Refresh all past chats
@@ -799,18 +804,7 @@ export default function PublicBotPage() {
         </div>
       </div>
 
-      {/* Login Popup - Disabled for unauthenticated chat */}
-      {/* <LoginPopup
-        isOpen={showLoginPopup}
-        onClose={() => setShowLoginPopup(false)}
-        onSuccess={() => {
-          setShowLoginPopup(false);
-          if (inputMessage.trim()) {
-            sendMessage(new Event('submit') as any);
-          }
-        }}
-        botName={bot?.name}
-      /> */}
+
     </Layout>
   );
 }
