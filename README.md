@@ -2,7 +2,7 @@
 
 AsQue is a modern AI chatbot platform that allows users to create, train, and deploy intelligent chatbots with ease. Built with Next.js, TypeScript, and powered by OpenAI.
 
-## 🚀 Features
+## Features
 
 - **Easy Bot Creation**: Create chatbots with custom names, descriptions, profile pictures, and welcome messages
 - **Interactive Training**: Train your bots through natural conversation
@@ -11,7 +11,7 @@ AsQue is a modern AI chatbot platform that allows users to create, train, and de
 - **Memory Bank**: View and manage your bot's training data
 - **Responsive Design**: Works perfectly on desktop and mobile devices
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS
 - **Backend**: Next.js API Routes, Node.js
@@ -26,7 +26,7 @@ AsQue is a modern AI chatbot platform that allows users to create, train, and de
 - OpenAI API key (required)
 - Firebase project (optional - mock database available)
 
-## 🔧 Quick Setup
+## Quick Setup
 
 1. **Clone the repository**
    ```bash
@@ -57,7 +57,7 @@ AsQue is a modern AI chatbot platform that allows users to create, train, and de
 5. **Open your browser**
    Navigate to `http://localhost:3000`
 
-## 🔑 Environment Variables
+## Environment Variables
 
 ### Required
 - `OPENAI_API_KEY`: Your OpenAI API key (get from https://platform.openai.com/api-keys)
@@ -74,7 +74,7 @@ If not provided, the app will use a mock database for development:
 - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
 
-## 🎯 How to Use
+## How to Use
 
 1. **Create Your First Bot**
    - Click "Create New Bot" or visit `/create`
@@ -95,7 +95,7 @@ If not provided, the app will use a mock database for development:
    - Visit `/my-bots` to see all your created bots
    - Continue training or chat with deployed bots
 
-## 🛠️ Development Features
+## Development Features
 
 - **Mock Database**: Works without Firebase for local development
 - **Hot Reload**: Instant updates during development
@@ -103,7 +103,7 @@ If not provided, the app will use a mock database for development:
 - **Error Handling**: Comprehensive error handling and logging
 - **Responsive UI**: Mobile-first design
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -126,7 +126,7 @@ If not provided, the app will use a mock database for development:
 
 Enable detailed logging by checking the browser console and terminal output. The app provides comprehensive logging for all operations.
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 AsQue/
@@ -147,7 +147,7 @@ AsQue/
 └── types.ts            # TypeScript types
 ```
 
-## 🚀 Deployment
+## Deployment
 
 The app is ready for deployment on Vercel:
 
@@ -155,17 +155,17 @@ The app is ready for deployment on Vercel:
 2. Add environment variables in Vercel dashboard
 3. Deploy!
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License.
 
-## 🆘 Support
+## Support
 
 If you encounter any issues or have questions, please check the troubleshooting section above or create an issue in the repository. 
