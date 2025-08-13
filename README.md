@@ -162,10 +162,6 @@ The app is ready for deployment on Vercel:
 3. Make your changes
 4. Submit a pull request
 
-## License
-
-This project is licensed under the MIT License.
-
 ## Support
 
 If you encounter any issues or have questions, please check the troubleshooting section above or create an issue in the repository. 
